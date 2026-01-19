@@ -1,0 +1,1005 @@
+import 'package:flutter/material.dart';
+import 'create_group_screen.dart';
+import 'package:provider/provider.dart';
+import '../../community/provider/community_provider.dart';
+import '../provider/chat_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/apptopbar.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'media_screen.dart';
+import '../../notifications/presentation/notification_screen.dart';
+import 'disappearing_messages_screen.dart';
+import 'advanced_chat_privacy_screen.dart';
+import 'edit_contact_screen.dart';
+import 'security_code_screen.dart';
+
+class InfoScreen extends StatefulWidget {
+  final String name;
+  final int memberCount;
+  final bool isGroup;
+  final String? description;
+  final String? createdBy;
+  final String? createdDate;
+
+  const InfoScreen({
+    super.key,
+    required this.name,
+    required this.memberCount,
+    this.isGroup = true,
+    this.description,
+    this.createdBy,
+    this.createdDate,
+  });
+
+  @override
+  State<InfoScreen> createState() => _InfoScreenState();
+}
+
+class _InfoScreenState extends State<InfoScreen> {
+  bool _isChatLocked = false;
+  bool _isFavorite = false;
+  XFile? _profileImage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F2F5),
+      appBar: AppTopBar(
+        title: widget.name,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              switch (value) {
+                case 'share':
+                  _shareContact();
+                  break;
+                case 'edit':
+                  _editContact();
+                  break;
+                case 'verify':
+                  _verifySecurityCode();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    Icon(Icons.share),
+                    SizedBox(width: 8),
+                    Text('Share'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit),
+                    SizedBox(width: 8),
+                    Text('Edit'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'verify',
+                child: Row(
+                  children: [
+                    Icon(Icons.security),
+                    SizedBox(width: 8),
+                    Text('Verify security code'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          _header(),
+          const SizedBox(height: 8),
+          _actionButtons(),
+          const SizedBox(height: 8),
+          _description(),
+          const SizedBox(height: 8),
+          _settings(),
+          const SizedBox(height: 8),
+          if (!widget.isGroup) const SizedBox(height: 8),
+          if (!widget.isGroup) _createGroupWith(),
+          if (!widget.isGroup) const SizedBox(height: 8),
+          if (!widget.isGroup) _commonGroups(),
+          if (!widget.isGroup) const SizedBox(height: 8),
+          if (!widget.isGroup) _contactActions(),
+          if (!widget.isGroup) const SizedBox(height: 8),
+          if (widget.isGroup) _membersSection(),
+          if (widget.isGroup) const SizedBox(height: 8),
+          if (widget.isGroup) _groupActions(),
+        ],
+      ),
+    );
+  }
+
+  Widget _header() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _editProfileImage,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: const Color(0xFFDADADA),
+                  backgroundImage: _profileImage != null 
+                    ? FileImage(File(_profileImage!.path))
+                    : null,
+                  child: _profileImage == null 
+                    ? Icon(widget.isGroup ? Icons.group : Icons.person, size: 40, color: Colors.white) 
+                    : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.name,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.isGroup ? 'Group · ${widget.memberCount} members' : 'Contact',
+            style: const TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionButtons() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _ActionItem(Icons.call, 'Audio', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio call')))),
+          _ActionItem(Icons.videocam, 'Video', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video call')))),
+          if (widget.isGroup) _ActionItem(Icons.person_add, 'Add', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add participant')))),
+          _ActionItem(Icons.search, 'Search', onTap: _searchInChat),
+        ],
+      ),
+    );
+  }
+
+  Widget _description() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.description ?? 'Add group description',
+            style: TextStyle(
+              color: widget.description == null ? const Color(0xFF128C7E) : Colors.black87,
+              fontWeight: widget.description == null ? FontWeight.w500 : FontWeight.normal,
+            ),
+          ),
+          if (widget.createdBy != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Created by ${widget.createdBy}, ${widget.createdDate ?? ''}',
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Settings list
+  Widget _settings() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          _SettingTile(
+            icon: Icons.notifications,
+            title: 'Notifications',
+            subtitle: 'All',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          GestureDetector(
+            onTap: () {
+              print('Media visibility tapped with GestureDetector!');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MediaScreen(chatName: widget.name),
+                ),
+              );
+            },
+            child: const _SettingTile(
+              icon: Icons.image,
+              title: 'Media visibility',
+            ),
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.lock,
+            title: 'Encryption',
+            subtitle: 'Messages and calls are end-to-end encrypted. Tap to learn more.',
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('End-to-end encryption info'))),
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.timer,
+            title: 'Disappearing messages',
+            subtitle: 'Off',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DisappearingMessagesScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          SwitchListTile(
+            secondary: const Icon(Icons.lock_outline, color: Colors.grey),
+            title: const Text('Chat lock'),
+            subtitle: const Text('Lock and hide this chat on this device'),
+            value: _isChatLocked,
+            onChanged: (value) {
+              setState(() {
+                _isChatLocked = value;
+              });
+            },
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.shield_outlined,
+            title: 'Advanced chat privacy',
+            subtitle: 'Off',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdvancedChatPrivacyScreen(),
+                ),
+              );
+            },
+          ),
+          if (widget.isGroup) ...[
+            const Divider(height: 1),
+           
+          ],
+        ],
+      ),
+    );
+  }
+
+  
+
+  Widget _createGroupWith() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Create Group',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.group_add, color: Color(0xFF128C7E)),
+            title: Text('Create group with ${widget.name}'),
+            subtitle: const Text('Start a new group conversation'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateGroupScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _commonGroups() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+    
+    final commonGroups = <String>{};
+    
+    // Check chat provider groups
+    for (final chat in chatProvider.chats) {
+      if (chat.isGroup) {
+        final members = communityProvider.getGroupMembers(chat.name);
+        if (members.contains(widget.name)) {
+          commonGroups.add(chat.name);
+        }
+      }
+    }
+    
+    // Check community provider groups
+    for (final chat in communityProvider.chats) {
+      if (chat.members != null && chat.members!.contains(widget.name)) {
+        commonGroups.add(chat.name);
+      }
+    }
+    
+    if (commonGroups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Groups in common',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ...commonGroups.map((groupName) => ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFDADADA),
+              child: Icon(Icons.group, color: Colors.white, size: 20),
+            ),
+            title: Text(groupName),
+            subtitle: const Text('Tap to open'),
+            onTap: () {
+              Navigator.pop(context);
+            },
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _contactActions() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          _SettingTile(
+            icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+            title: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            iconColor: _isFavorite ? Colors.red : null,
+            onTap: _toggleFavorite,
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.playlist_add,
+            title: 'Add to list',
+            onTap: _showAddToListDialog,
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.block,
+            title: 'Block',
+            iconColor: Colors.red,
+            titleColor: Colors.red,
+            onTap: _blockContact,
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.report,
+            title: 'Report',
+            iconColor: Colors.red,
+            titleColor: Colors.red,
+            onTap: _reportContact,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _membersSection() {
+    final members = Provider.of<CommunityProvider>(context, listen: false).getGroupMembers(widget.name);
+    final totalMembers = members.length + 1;
+    
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          ListTile(
+            title: Text('$totalMembers members'),
+            trailing: const Icon(Icons.search, color: Colors.grey),
+          ),
+          const Divider(height: 1),
+          _memberTile('You', isAdmin: true),
+          ...members.map((name) => _memberTile(name)),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.person_add, color: Color(0xFF128C7E)),
+            title: const Text('Add participant', style: TextStyle(color: Color(0xFF128C7E))),
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add participant functionality'))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _groupActions() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          _SettingTile(
+            icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+            title: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            iconColor: _isFavorite ? Colors.red : null,
+            onTap: _toggleFavorite,
+          ),
+          const Divider(height: 1),
+          _SettingTile(
+            icon: Icons.playlist_add,
+            title: 'Add to list',
+            onTap: _showAddToListDialog,
+          ),
+          const Divider(height: 1),
+        _SettingTile(
+          icon: Icons.exit_to_app,
+          title: 'Exit group',
+          iconColor: Colors.red,
+          titleColor: Colors.red,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Exit group?'),
+                content: const Text('You will no longer receive messages from this group.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Left the group'), backgroundColor: Colors.red),
+                      );
+                    },
+                    child: const Text('Exit', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const Divider(height: 1),
+        _SettingTile(
+          icon: Icons.report,
+          title: 'Report Group',
+          iconColor: Colors.red,
+          titleColor: Colors.red,
+          onTap: _reportContact,
+        ),
+        const Divider(height: 1),
+       
+        
+        ],
+      ),
+    );
+  }
+
+  Widget _memberTile(String name, {bool isAdmin = false}) {
+    return ListTile(
+      leading: const CircleAvatar(
+        backgroundColor: Color(0xFFDADADA),
+        child: Icon(Icons.person, color: Colors.white, size: 20),
+      ),
+      title: Text(name),
+      subtitle: Text(
+        isAdmin ? 'Group admin' : 'Hey there!',
+        style: TextStyle(color: isAdmin ? const Color(0xFF128C7E) : Colors.grey, fontSize: 12),
+      ),
+    );
+  }
+
+  void _showDeleteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Group'),
+        content: const Text('Are you sure you want to delete this group? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteGroup();
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteGroup() {
+    Provider.of<ChatProvider>(context, listen: false).deleteGroup(widget.name);
+    Navigator.pop(context);
+    Navigator.pop(context);
+  }
+
+  void _editProfileImage() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppTheme.primaryColor),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromCamera();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppTheme.primaryColor),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromGallery();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+      
+      if (pickedFile != null) {
+        setState(() {
+          _profileImage = pickedFile;
+        });
+        // Save to provider so it appears in chat list
+        _saveProfileImage(pickedFile.path);
+        print('Image selected: ${pickedFile.path}');
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+      
+      if (pickedFile != null) {
+        setState(() {
+          _profileImage = pickedFile;
+        });
+        // Save to provider so it appears in chat list
+        _saveProfileImage(pickedFile.path);
+        print('Image captured: ${pickedFile.path}');
+      }
+    } catch (e) {
+      print('Error capturing image: $e');
+    }
+  }
+
+  void _shareContact() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Share Contact', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.message, color: AppTheme.primaryColor),
+              title: const Text('Send via Message'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Contact shared via message')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.email, color: AppTheme.primaryColor),
+              title: const Text('Send via Email'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Contact shared via email')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editContact() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditContactScreen(contactName: widget.name),
+      ),
+    );
+  }
+
+  void _verifySecurityCode() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SecurityCodeScreen(contactName: widget.name),
+      ),
+    );
+  }
+
+  void _saveProfileImage(String imagePath) {
+    // For now, just store locally. You can extend this later to save to providers
+    // when the updateProfileImage methods are implemented in the providers
+    print('Profile image saved: $imagePath');
+  }
+
+  void _searchInChat() {
+    showSearch(
+      context: context,
+      delegate: ChatSearchDelegate(chatName: widget.name),
+    );
+  }
+
+  void _toggleFavorite() {
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isFavorite ? 'Added to favorites' : 'Removed from favorites'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showAddToListDialog() {
+    final lists = [
+      {'name': 'Work', 'icon': Icons.work_outline},
+      {'name': 'Family', 'icon': Icons.family_restroom},
+      {'name': 'Friends', 'icon': Icons.people_outline},
+      {'name': 'Important', 'icon': Icons.star_outline},
+      {'name': 'Blocked', 'icon': Icons.block},
+    ];
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Text(
+                    'Add to list',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ...lists.map((list) => 
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                  child: Icon(list['icon'] as IconData, color: AppTheme.primaryColor, size: 20),
+                ),
+                title: Text(list['name'] as String),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Added to ${list['name']} list'),
+                      backgroundColor: AppTheme.primaryColor,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _blockContact() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Block ${widget.name}?'),
+        content: Text('Blocked contacts will no longer be able to call you or send you messages.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${widget.name} has been blocked'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            child: const Text('Block', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _reportContact() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Report ${widget.name}?'),
+        content: const Text('This contact will be reported for inappropriate behavior. The last 5 messages will be forwarded to our team.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${widget.name} has been reported'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            child: const Text('Report', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 🔹 Action button widget
+class _ActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _ActionItem(this.icon, this.label, {this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: const Color(0xFF128C7E)),
+          ),
+          const SizedBox(height: 6),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+// 🔹 Setting tile
+class _SettingTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color? iconColor;
+  final Color? titleColor;
+  final VoidCallback? onTap;
+
+  const _SettingTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.iconColor,
+    this.titleColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? Colors.grey),
+      title: Text(title, style: TextStyle(color: titleColor)),
+      subtitle: subtitle != null ? Text(subtitle!) : null,
+      onTap: onTap,
+    );
+  }
+}
+
+// 🔹 Chat Search Delegate
+class ChatSearchDelegate extends SearchDelegate<String> {
+  final String chatName;
+
+  ChatSearchDelegate({required this.chatName});
+
+  @override
+  String get searchFieldLabel => 'Search messages...';
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, '');
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return _buildSearchResults(context);
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return _buildSearchResults(context);
+  }
+
+  Widget _buildSearchResults(BuildContext context) {
+    if (query.isEmpty) {
+      return const Center(
+        child: Text('Enter text to search messages'),
+      );
+    }
+
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final messages = chatProvider.messages
+        .where((message) => message.text.toLowerCase().contains(query.toLowerCase()))
+        .toList();
+
+    if (messages.isEmpty) {
+      return const Center(
+        child: Text('No messages found'),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        return ListTile(
+          title: Text(
+            message.text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            '${message.sender ?? (message.isMe ? 'You' : 'Unknown')} • ${message.time}',
+            style: const TextStyle(fontSize: 12),
+          ),
+          onTap: () {
+            close(context, message.text);
+          },
+        );
+      },
+    );
+  }
+}
