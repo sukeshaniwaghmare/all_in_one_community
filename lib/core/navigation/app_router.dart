@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'route_names.dart';
-import '../../features/community/presentation/community_selection_screen.dart';
+import '../../features/community/presentation/home screen_selection_screen.dart';
 import '../../features/community/presentation/main_navigation_screen.dart';
 import '../../features/chat/presentation/chat_list_screen.dart';
 import '../../features/announcements/presentation/announcements_screen.dart';

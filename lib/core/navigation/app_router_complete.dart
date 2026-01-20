@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
-import '../../features/community/presentation/community_selection_screen.dart';
+import '../../features/community/presentation/home screen_selection_screen.dart';
 import '../../features/community/presentation/main_navigation_screen.dart';
 import '../../features/community/domain/community_type.dart';
 import '../../features/chat/presentation/chat_screen.dart';

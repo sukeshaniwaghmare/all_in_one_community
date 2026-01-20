@@ -206,6 +206,24 @@ class CommunityProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void updateContactName(String oldName, String newName) {
+    final index = _chats.indexWhere((chat) => chat.name == oldName);
+    if (index != -1) {
+      final oldChat = _chats[index];
+      _chats[index] = ChatItem(
+        initials: newName.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').take(2).join(),
+        name: newName,
+        preview: oldChat.preview,
+        time: oldChat.time,
+        unread: oldChat.unread,
+        avatarColor: oldChat.avatarColor,
+        members: oldChat.members,
+      );
+      notifyListeners();
+      print('Updated contact name from $oldName to $newName in CommunityProvider');
+    }
+  }
 }
 
 class Member {

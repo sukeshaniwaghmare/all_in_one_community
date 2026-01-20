@@ -691,12 +691,39 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   void _editContact() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditContactScreen(contactName: widget.name),
-      ),
-    );
+    print('Edit contact tapped for: ${widget.name}');
+    try {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EditContactScreen(contactName: widget.name),
+        ),
+      ).then((result) {
+        print('Returned from EditContactScreen with result: $result');
+        if (result != null && result is Map<String, String>) {
+          final newName = result['name']!;
+          
+          // Update in ChatProvider
+          final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+          chatProvider.updateContactName(widget.name, newName);
+          
+          // Update in CommunityProvider
+          final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+          communityProvider.updateContactName(widget.name, newName);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Contact updated: $newName')),
+          );
+          
+          // Go back to refresh the previous screen
+          Navigator.pop(context);
+        }
+      });
+    } catch (e) {
+      print('Navigation error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error opening edit screen: $e')),
+      );
+    }
   }
 
   void _verifySecurityCode() {

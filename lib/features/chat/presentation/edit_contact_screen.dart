@@ -25,6 +25,14 @@ class _EditContactScreenState extends State<EditContactScreen> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -46,25 +54,43 @@ class _EditContactScreenState extends State<EditContactScreen> {
               children: [
                 TextField(
                   controller: _nameController,
+                  enabled: true,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Name',
                     border: UnderlineInputBorder(),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.primaryColor),
+                    ),
                   ),
+                  onChanged: (value) {
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Phone',
                     border: UnderlineInputBorder(),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.primaryColor),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     border: UnderlineInputBorder(),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.primaryColor),
+                    ),
                   ),
                 ),
               ],
@@ -76,7 +102,18 @@ class _EditContactScreenState extends State<EditContactScreen> {
   }
 
   void _saveContact() {
-    Navigator.pop(context);
+    final newName = _nameController.text.trim();
+    final newPhone = _phoneController.text.trim();
+    final newEmail = _emailController.text.trim();
+    
+    
+    // Return the updated data back to previous screen
+    Navigator.pop(context, {
+      'name': newName,
+      'phone': newPhone,
+      'email': newEmail,
+    });
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Contact updated successfully')),
     );

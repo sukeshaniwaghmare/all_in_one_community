@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class ChatProvider extends ChangeNotifier {
   List<ChatItem> _chats = [];
@@ -9,9 +11,7 @@ class ChatProvider extends ChangeNotifier {
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
 
-  void loadChats() {
-    print('🔵 loadChats called, current chats count: ${_chats.length}');
-    
+  void loadChats() async {
     _isLoading = true;
     notifyListeners();
     
@@ -37,10 +37,21 @@ class ChatProvider extends ChangeNotifier {
           isOnline: true,
         ),
       ];
+      
+      // Load saved contact names
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('contact_names');
+      if (saved != null) {
+        final Map<String, String> contactNames = Map<String, String>.from(jsonDecode(saved));
+        for (int i = 0; i < _chats.length; i++) {
+          if (contactNames.containsKey(_chats[i].id)) {
+            _chats[i] = _chats[i].copyWith(name: contactNames[_chats[i].id]);
+          }
+        }
+      }
     }
     
     _isLoading = false;
-    print('🔵 loadChats completed, chats count: ${_chats.length}');
     notifyListeners();
   }
 
@@ -88,8 +99,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void createGroup(String groupName, List<String> memberNames) {
-    print('🟢 createGroup called: $groupName with ${memberNames.length} members');
-    print('🟢 Before insert - chats count: ${_chats.length}');
+ 
     
     final newGroup = ChatItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -102,10 +112,9 @@ class ChatProvider extends ChangeNotifier {
     );
     _chats.insert(0, newGroup);
     
-    print('🟢 After insert - chats count: ${_chats.length}');
-    print('🟢 First chat name: ${_chats.first.name}');
+  
     notifyListeners();
-    print('🟢 notifyListeners called');
+  
   }
 
   void deleteGroup(String groupName) {
@@ -116,6 +125,25 @@ class ChatProvider extends ChangeNotifier {
   void clearMessages() {
     _messages.clear();
     notifyListeners();
+  }
+
+  void updateContactName(String oldName, String newName) async {
+    final index = _chats.indexWhere((chat) => chat.name == oldName);
+    if (index != -1) {
+      _chats[index] = _chats[index].copyWith(name: newName);
+      
+      // Save to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      Map<String, String> contactNames = {};
+      final saved = prefs.getString('contact_names');
+      if (saved != null) {
+        contactNames = Map<String, String>.from(jsonDecode(saved));
+      }
+      contactNames[_chats[index].id] = newName;
+      await prefs.setString('contact_names', jsonEncode(contactNames));
+      
+      notifyListeners();
+    }
   }
 }
 

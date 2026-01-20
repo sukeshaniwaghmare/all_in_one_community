@@ -4,25 +4,143 @@ import '../../../core/widgets/apptopbar.dart';
 import '../../camera/presentation/camera_screen.dart';
 import '../../search/presentation/search_screen.dart';
 
-class StatusScreen extends StatelessWidget {
+class StatusScreen extends StatefulWidget {
   const StatusScreen({super.key});
+
+  @override
+  State<StatusScreen> createState() => _StatusScreenState();
+}
+
+class _StatusScreenState extends State<StatusScreen> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  List<Map<String, String>> _filteredStatuses = [];
+  
+  final List<Map<String, String>> _allStatuses = [
+    {'name': 'User 1', 'time': '1 minutes ago'},
+    {'name': 'User 2', 'time': '2 minutes ago'},
+    {'name': 'User 3', 'time': '3 minutes ago'},
+    {'name': 'User 4', 'time': '4 minutes ago'},
+    {'name': 'User 5', 'time': '5 minutes ago'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredStatuses = _allStatuses;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _filterStatuses(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredStatuses = _allStatuses;
+      } else {
+        _filteredStatuses = _allStatuses
+            .where((status) => status['name']!.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppTopBar(
-        title: 'Status',
-        actions: [
+        title: _isSearching ? '' : 'Status',
+        titleWidget: _isSearching ? TextField(
+          controller: _searchController,
+          focusNode: _searchFocusNode,
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.search,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Search status...',
+            hintStyle: TextStyle(color: Colors.white70),
+            border: InputBorder.none,
+          ),
+          onChanged: _filterStatuses,
+          onSubmitted: (value) {
+            _filterStatuses(value);
+          },
+        ) : null,
+        leading: _isSearching ? IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            _searchFocusNode.unfocus(); // Hide keyboard
+            setState(() {
+              _isSearching = false;
+              _searchController.clear();
+              _filteredStatuses = _allStatuses;
+            });
+          },
+        ) : null,
+        actions: _isSearching ? [] : [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const SearchScreen()
-              ));
+              setState(() {
+                _isSearching = true;
+              });
+              // Request focus to show keyboard
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _searchFocusNode.requestFocus();
+              });
             },
           ),
-          IconButton(icon: const Icon(Icons.more_vert, color: Colors.white), onPressed: () {}),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              switch (value) {
+                case 'create_channel':
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Create channel')),
+                  );
+                  break;
+                case 'status_privacy':
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Status privacy')),
+                  );
+                  break;
+                case 'starred':
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Starred')),
+                  );
+                  break;
+                case 'settings':
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Settings')),
+                  );
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'create_channel',
+                child: Text('Create channel'),
+              ),
+              const PopupMenuItem(
+                value: 'status_privacy',
+                child: Text('Status privacy'),
+              ),
+              const PopupMenuItem(
+                value: 'starred',
+                child: Text('Starred'),
+              ),
+              const PopupMenuItem(
+                value: 'settings',
+                child: Text('Settings'),
+              ),
+            ],
+          ),
         ],
       ),
       body: ListView(
@@ -109,7 +227,15 @@ class StatusScreen extends StatelessWidget {
             padding: EdgeInsets.all(16),
             child: Text('Recent updates', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
           ),
-          ...List.generate(5, (index) => _buildStatusTile('User ${index + 1}', '${index + 1} minutes ago')),
+          if (_filteredStatuses.isEmpty && _isSearching)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Text('No status found', style: TextStyle(color: Colors.grey)),
+              ),
+            )
+          else
+            ..._filteredStatuses.map((status) => _buildStatusTile(status['name']!, status['time']!)),
         ],
       ),
     );
