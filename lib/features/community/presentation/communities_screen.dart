@@ -8,7 +8,7 @@ class CommunitiesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final communities = [
       {
-        'name': 'Tech Enthusiasts',
+        'name': 'Tech Enthusiarsts',
         'description': 'Latest tech news and discussions',
         'members': 1250,
         'image': 'T',

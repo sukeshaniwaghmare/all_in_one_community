@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import 'call_info_screen.dart';
 
 class CallsScreen extends StatelessWidget {
   const CallsScreen({super.key});
@@ -123,14 +124,37 @@ class CallsScreen extends StatelessWidget {
                     Text(call['time'] as String),
                   ],
                 ),
-                trailing: Icon(
-                  call['isVideo'] as bool ? Icons.videocam : Icons.call,
-                  color: AppTheme.primaryColor,
+                trailing: GestureDetector(
+                  onTap: () {
+                    print('Call icon tapped: ${call['name']}');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CallInfoScreen(
+                          name: call['name'] as String,
+                          avatar: call['avatar'] as String,
+                          color: call['color'] as Color,
+                          isVideo: call['isVideo'] as bool,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Icon(
+                    call['isVideo'] as bool ? Icons.videocam : Icons.call,
+                    color: AppTheme.primaryColor,
+                  ),
                 ),
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Calling ${call['name']}...'),
+                  print('Call item tapped: ${call['name']}');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CallInfoScreen(
+                        name: call['name'] as String,
+                        avatar: call['avatar'] as String,
+                        color: call['color'] as Color,
+                        isVideo: call['isVideo'] as bool,
+                      ),
                     ),
                   );
                 },
