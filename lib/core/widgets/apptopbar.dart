@@ -41,14 +41,14 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w500,
-          color: foregroundColor ?? Colors.white,
+          color: foregroundColor ?? AppTheme.primaryColor,
         ),
       ),
       leading: leading ?? _buildLeading(context),
       actions: actions ?? _buildDefaultActions(),
       centerTitle: centerTitle,
-      backgroundColor: backgroundColor ?? AppTheme.primaryColor,
-      foregroundColor: foregroundColor ?? Colors.white,
+      backgroundColor: backgroundColor ?? Colors.white,
+      foregroundColor: foregroundColor ?? AppTheme.primaryColor,
       elevation: elevation,
       titleSpacing: 0,
     );
@@ -57,14 +57,14 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   Widget? _buildLeading(BuildContext context) {
     if (showBackButton) {
       return IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
         onPressed: () => Navigator.pop(context),
       );
     }
     if (showMenuButton) {
       return Builder(
         builder: (context) => IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
+          icon: Icon(Icons.menu, color: AppTheme.primaryColor),
           onPressed: onMenuPressed ?? () => Scaffold.of(context).openDrawer(),
         ),
       );
@@ -78,7 +78,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
     if (menuItems != null && menuItems!.isNotEmpty) {
       defaultActions.add(
         PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.white),
+          icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
           onSelected: onMenuSelected,
           itemBuilder: (context) => menuItems!,
         ),

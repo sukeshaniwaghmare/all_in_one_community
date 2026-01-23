@@ -21,12 +21,13 @@ class _ClearCallLogScreenState extends State<ClearCallLogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Clear Call Log'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Clear Call Log', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           TextButton(
             onPressed: _callLogs.isNotEmpty ? _showClearDialog : null,
-            child: const Text('CLEAR ALL', style: TextStyle(color: Colors.white)),
+            child: Text('CLEAR ALL', style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),

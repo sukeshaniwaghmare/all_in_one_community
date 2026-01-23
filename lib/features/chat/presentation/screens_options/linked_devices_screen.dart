@@ -8,8 +8,9 @@ class LinkedDevicesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Linked Devices'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Linked Devices', style: TextStyle(color: AppTheme.primaryColor)),
       ),
       body: Column(
         children: [

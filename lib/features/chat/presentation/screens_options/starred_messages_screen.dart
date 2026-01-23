@@ -29,8 +29,9 @@ class StarredMessagesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Starred Messages'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Starred Messages', style: TextStyle(color: AppTheme.primaryColor)),
       ),
       body: _starredMessages.isEmpty
           ? const Center(

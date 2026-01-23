@@ -8,11 +8,12 @@ class PaymentsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Payments'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Payments', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.history),
+            icon: Icon(Icons.history, color: AppTheme.primaryColor),
             onPressed: () => _showPaymentHistory(context),
           ),
         ],

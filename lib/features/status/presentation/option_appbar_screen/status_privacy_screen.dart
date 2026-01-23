@@ -15,8 +15,9 @@ class _StatusPrivacyScreenState extends State<StatusPrivacyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Status Privacy'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Status Privacy', style: TextStyle(color: AppTheme.primaryColor)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

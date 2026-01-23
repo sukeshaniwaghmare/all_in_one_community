@@ -22,12 +22,13 @@ class _BroadcastListScreenState extends State<BroadcastListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('New Broadcast'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('New Broadcast', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           IconButton(
             onPressed: _selectedContacts.isNotEmpty ? _createBroadcast : null,
-            icon: const Icon(Icons.check),
+            icon: Icon(Icons.check, color: AppTheme.primaryColor),
           ),
         ],
       ),

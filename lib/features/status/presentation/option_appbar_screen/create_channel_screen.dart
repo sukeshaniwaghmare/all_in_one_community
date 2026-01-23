@@ -16,14 +16,15 @@ class _CreateChannelScreenState extends State<CreateChannelScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Create Channel'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Create Channel', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           TextButton(
             onPressed: _channelNameController.text.trim().isNotEmpty
                 ? _createChannel
                 : null,
-            child: const Text('CREATE', style: TextStyle(color: Colors.white)),
+            child: Text('CREATE', style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),

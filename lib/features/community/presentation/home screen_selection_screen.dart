@@ -22,6 +22,7 @@ import '../../calls/presentation/appbar_option_screen/clear_call_log_screen.dart
 import '../../status/presentation/option_appbar_screen/status_privacy_screen.dart';
 import '../../status/presentation/option_appbar_screen/create_channel_screen.dart';
 import '../../status/presentation/option_appbar_screen/find_channels_screen.dart';
+import '../../status/presentation/status_screen.dart';
 
 class CommunitySelectionScreen extends StatefulWidget {
   const CommunitySelectionScreen({super.key});
@@ -80,7 +81,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
 
       // STYLE APP BAR
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 50,
         leading: Builder(
@@ -93,9 +94,9 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                     shape: BoxShape.circle,
                     color: Colors.grey.shade200,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.menu, // three lines
-                    color: Colors.black,
+                    color: AppTheme.primaryColor,
                   ),
                 ),
               ),
@@ -106,23 +107,23 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
+                style: TextStyle(color: AppTheme.primaryColor),
+                decoration: InputDecoration(
                   hintText: 'Search...',
-                  hintStyle: TextStyle(color: Colors.white70),
+                  hintStyle: TextStyle(color: AppTheme.primaryColor.withOpacity(0.7)),
                   border: InputBorder.none,
                 ),
                 onChanged: (_) => setState(() {}),
               )
             : Text(
                 _getAppBarTitle(),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
               ),
         actions: [
           // Show search icon for non-chat tabs
           if (_currentTabIndex != 0)
             IconButton(
-              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              icon: Icon(_isSearching ? Icons.close : Icons.search, color: AppTheme.primaryColor),
               onPressed: () {
                 setState(() {
                   _isSearching = !_isSearching;
@@ -134,7 +135,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             ),
           if (_currentTabIndex == 0)
             IconButton(
-              icon: const Icon(Icons.camera_alt_outlined),
+              icon: Icon(Icons.camera_alt_outlined, color: AppTheme.primaryColor),
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -168,7 +169,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
               },
             ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
             onSelected: _handleMenuAction,
             itemBuilder: (context) => _getMenuItems(),
           ),
@@ -183,7 +184,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             Padding(
               padding: const EdgeInsets.all(12),
               child: Container(
-                height: 45,
+                height: 40,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(25),
@@ -192,7 +193,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(
-                    hintText: 'Searching...',
+                    hintText: 'Search...',
                     prefixIcon: Icon(Icons.search),
                     border: InputBorder.none,
                   ),
@@ -203,7 +204,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
           // FILTER CHIPS
           if (_currentTabIndex == 0)
             SizedBox(
-              height: 50,
+              height: 30,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -232,7 +233,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 _buildChatsTab(_getFilteredChats(chats)),
                 _buildCommunitiesTab(),
                 const CallsScreen(),
-                const Center(child: Text('Updates Screen')),
+                _buildStatusTab(),
               ],
             ),
           ),
@@ -243,7 +244,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       bottomNavigationBar: Material(
         elevation: 9,
         child: Container(
-          height: 50,
+          height: 55,
           child: TabBar(
             controller: _tabController,
             indicatorColor: AppTheme.primaryColor,
@@ -273,7 +274,27 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
               },
               child: const Icon(Icons.chat),
             )
-          : null,
+          : _currentTabIndex == 3
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton(
+                      heroTag: "text_status",
+                      mini: true,
+                      backgroundColor: Colors.grey[600],
+                      onPressed: () {},
+                      child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(height: 8),
+                    FloatingActionButton(
+                      heroTag: "camera_status",
+                      backgroundColor: AppTheme.primaryColor,
+                      onPressed: () {},
+                      child: const Icon(Icons.camera_alt, color: Colors.white),
+                    ),
+                  ],
+                )
+              : null,
     );
   }
 
@@ -498,6 +519,103 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
 
   Widget _buildCommunitiesTab() {
     return const Center(child: Text('Communities'));
+  }
+
+  Widget _buildStatusTab() {
+    return Container(
+      color: Colors.grey[50],
+      child: ListView(
+        children: [
+          _buildMyStatus(),
+          const Divider(height: 8, thickness: 8, color: Color(0xFFF0F0F0)),
+          _buildRecentUpdates(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMyStatus() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              const CircleAvatar(
+                radius: 28,
+                backgroundColor: AppTheme.primaryColor,
+                child: Text('M', style: TextStyle(color: Colors.white, fontSize: 20)),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 20),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('My status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                Text('Tap to add status update', style: TextStyle(color: Colors.grey, fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentUpdates() {
+    final statuses = [
+      {'name': 'User 1', 'time': '1 minutes ago'},
+      {'name': 'User 2', 'time': '2 minutes ago'},
+      {'name': 'User 3', 'time': '3 minutes ago'},
+      {'name': 'User 4', 'time': '4 minutes ago'},
+      {'name': 'User 5', 'time': '5 minutes ago'},
+    ];
+
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Recent updates', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          ),
+          ...statuses.map((status) => _buildStatusTile(status['name']!, status['time']!)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusTile(String name, String time) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.primaryColor, width: 2),
+        ),
+        child: CircleAvatar(
+          radius: 26,
+          backgroundColor: Colors.grey[300],
+          child: Text(name[0], style: const TextStyle(fontSize: 18)),
+        ),
+      ),
+      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(time, style: const TextStyle(color: Colors.grey)),
+    );
   }
 
   void _openChat(BuildContext context, ChatItem item) {

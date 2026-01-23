@@ -16,14 +16,15 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('New Group'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('New Group', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           TextButton(
             onPressed: _selectedContacts.isNotEmpty && _groupNameController.text.trim().isNotEmpty
                 ? _createGroup
                 : null,
-            child: const Text('CREATE', style: TextStyle(color: Colors.white)),
+            child: Text('CREATE', style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),

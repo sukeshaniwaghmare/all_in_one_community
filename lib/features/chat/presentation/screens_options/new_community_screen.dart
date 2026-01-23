@@ -16,12 +16,13 @@ class _NewCommunityScreenState extends State<NewCommunityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('New Community'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('New Community', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           TextButton(
             onPressed: _communityNameController.text.isNotEmpty ? _createCommunity : null,
-            child: const Text('CREATE', style: TextStyle(color: Colors.white)),
+            child: Text('CREATE', style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),

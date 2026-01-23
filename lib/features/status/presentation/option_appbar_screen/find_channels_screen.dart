@@ -22,8 +22,9 @@ class _FindChannelsScreenState extends State<FindChannelsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Find Channels'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Find Channels', style: TextStyle(color: AppTheme.primaryColor)),
       ),
       body: Column(
         children: [

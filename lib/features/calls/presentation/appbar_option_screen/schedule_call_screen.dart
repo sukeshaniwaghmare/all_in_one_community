@@ -18,12 +18,13 @@ class _ScheduleCallScreenState extends State<ScheduleCallScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text('Schedule Call'),
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: AppTheme.primaryColor),
+        title: Text('Schedule Call', style: TextStyle(color: AppTheme.primaryColor)),
         actions: [
           TextButton(
             onPressed: _selectedContact.isNotEmpty ? _scheduleCall : null,
-            child: const Text('SCHEDULE', style: TextStyle(color: Colors.white)),
+            child: Text('SCHEDULE', style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),

@@ -59,13 +59,15 @@ class _ChatScreenState extends State<ChatScreen> {
     
     return Scaffold(
       backgroundColor: chatBgColor,
-      appBar: _isSearching ? _buildSearchAppBar() : AppTopBar(
-        title: widget.chat.name,
+      appBar: _isSearching ? _buildSearchAppBar() : AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
-        titleWidget: InkWell(
+        titleSpacing: 0,
+        title: InkWell(
           onTap: () {
             Navigator.push(
               context,
@@ -82,7 +84,7 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: widget.chat.isGroup ? Colors.white24 : _getAvatarColor(widget.chat.name),
+                backgroundColor: widget.chat.isGroup ? AppTheme.primaryColor : _getAvatarColor(widget.chat.name),
                 child: Text(widget.chat.name[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 16)),
               ),
               const SizedBox(width: 10),
@@ -90,10 +92,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.chat.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white)),
+                    Text(widget.chat.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppTheme.primaryColor)),
                     Text(
                       widget.chat.isGroup ? '${widget.chat.memberCount} members' : (widget.chat.isOnline ? 'online' : 'last seen recently'),
-                      style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      style: TextStyle(fontSize: 12, color: AppTheme.primaryColor.withOpacity(0.7)),
                     ),
                   ],
                 ),
@@ -102,10 +104,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.call, color: Colors.white), onPressed: _makePhoneCall),
-          IconButton(icon: const Icon(Icons.videocam, color: Colors.white), onPressed: _makeVideoCall),
+          IconButton(icon: Icon(Icons.call, color: AppTheme.primaryColor), onPressed: _makePhoneCall),
+          IconButton(icon: Icon(Icons.videocam, color: AppTheme.primaryColor), onPressed: _makeVideoCall),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
+            icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
             onSelected: (value) => _handleMenuAction(value),
             itemBuilder: (context) => [
               if (widget.chat.isGroup) const PopupMenuItem(value: 'new_group', child: Text('New group')),
@@ -552,9 +554,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   PreferredSizeWidget _buildSearchAppBar() {
     return AppBar(
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: Colors.white,
+      elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
         onPressed: () {
           setState(() {
             _isSearching = false;
@@ -566,10 +569,10 @@ class _ChatScreenState extends State<ChatScreen> {
       title: TextField(
         controller: _searchController,
         autofocus: true,
-        style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
+        style: TextStyle(color: AppTheme.primaryColor),
+        decoration: InputDecoration(
           hintText: 'Search messages...',
-          hintStyle: TextStyle(color: Colors.white70),
+          hintStyle: TextStyle(color: AppTheme.primaryColor.withOpacity(0.7)),
           border: InputBorder.none,
         ),
         onChanged: _searchMessages,

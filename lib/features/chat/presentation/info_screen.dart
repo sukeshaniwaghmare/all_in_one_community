@@ -48,11 +48,20 @@ class _InfoScreenState extends State<InfoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
-      appBar: AppTopBar(
-        title: widget.name,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.name,
+          style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.call, color: Colors.white),
+            icon: Icon(Icons.call, color: AppTheme.primaryColor),
             onPressed: () {
               Navigator.push(
                 context,
@@ -68,7 +77,7 @@ class _InfoScreenState extends State<InfoScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.videocam, color: Colors.white),
+            icon: Icon(Icons.videocam, color: AppTheme.primaryColor),
             onPressed: () {
               Navigator.push(
                 context,
@@ -82,7 +91,7 @@ class _InfoScreenState extends State<InfoScreen> {
             },
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
+            icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
             onSelected: (value) {
               switch (value) {
                 case 'share':
