@@ -14,6 +14,8 @@ import 'disappearing_messages_screen.dart';
 import 'advanced_chat_privacy_screen.dart';
 import 'edit_contact_screen.dart';
 import 'security_code_screen.dart';
+import '../../calls/presentation/call_info_screen.dart';
+import '../../video_call/presentation/video_call_screen.dart';
 
 class InfoScreen extends StatefulWidget {
   final String name;
@@ -49,6 +51,36 @@ class _InfoScreenState extends State<InfoScreen> {
       appBar: AppTopBar(
         title: widget.name,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.call, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CallInfoScreen(
+                    name: widget.name,
+                    avatar: widget.name[0].toUpperCase(),
+                    color: AppTheme.primaryColor,
+                    isVideo: false,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.videocam, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VideoCallScreen(
+                    contactName: widget.name,
+                    isIncoming: false,
+                  ),
+                ),
+              );
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
@@ -181,8 +213,30 @@ class _InfoScreenState extends State<InfoScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _ActionItem(Icons.call, 'Audio', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio call')))),
-          _ActionItem(Icons.videocam, 'Video', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video call')))),
+          _ActionItem(Icons.call, 'Audio', onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CallInfoScreen(
+                  name: widget.name,
+                  avatar: widget.name[0].toUpperCase(),
+                  color: AppTheme.primaryColor,
+                  isVideo: false,
+                ),
+              ),
+            );
+          }),
+          _ActionItem(Icons.videocam, 'Video', onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VideoCallScreen(
+                  contactName: widget.name,
+                  isIncoming: false,
+                ),
+              ),
+            );
+          }),
           if (widget.isGroup) _ActionItem(Icons.person_add, 'Add', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add participant')))),
           _ActionItem(Icons.search, 'Search', onTap: _searchInChat),
         ],

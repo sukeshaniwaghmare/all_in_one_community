@@ -10,6 +10,7 @@ import '../../contacts/presentation/contacts_screen.dart';
 import 'screens/settings_screen.dart';
 import '../../chat/presentation/archived_chats_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'new_list_screen.dart';
 
 class CommunitySelectionScreen extends StatefulWidget {
   const CommunitySelectionScreen({super.key});
@@ -24,6 +25,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All';
   int _currentTabIndex = 0;
+  bool _isSearching = false;
 
   late TabController _tabController;
 
@@ -69,46 +71,91 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
-        title: const Text(
-          'Community',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-         
-          IconButton(
-            icon: const Icon(Icons.camera_alt_outlined),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (context) => Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.camera_alt),
-                        title: const Text('Camera'),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final picker = ImagePicker();
-                          await picker.pickImage(source: ImageSource.camera);
-                        },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.photo_library),
-                        title: const Text('Gallery'),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final picker = ImagePicker();
-                          await picker.pickImage(source: ImageSource.gallery);
-                        },
-                      ),
-                    ],
+        toolbarHeight: 50,
+        leading: Builder(
+              builder: (context) => IconButton(
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                icon: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey.shade200,
+                  ),
+                  child: const Icon(
+                    Icons.menu, // three lines
+                    color: Colors.black,
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+
+        
+        title: (_isSearching && _currentTabIndex != 0)
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                onChanged: (_) => setState(() {}),
+              )
+            : Text(
+                _getAppBarTitle(),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+        actions: [
+          // Show search icon for non-chat tabs
+          if (_currentTabIndex != 0)
+            IconButton(
+              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = !_isSearching;
+                  if (!_isSearching) {
+                    _searchController.clear();
+                  }
+                });
+              },
+            ),
+          if (_currentTabIndex == 0)
+            IconButton(
+              icon: const Icon(Icons.camera_alt_outlined),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => Container(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.camera_alt),
+                          title: const Text('Camera'),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            final picker = ImagePicker();
+                            await picker.pickImage(source: ImageSource.camera);
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.photo_library),
+                          title: const Text('Gallery'),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            final picker = ImagePicker();
+                            await picker.pickImage(source: ImageSource.gallery);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: _handleMenuAction,
@@ -131,26 +178,27 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       //  BODY
       body: Column(
         children: [
-          // 🔍 SEARCH BAR (WHATSAPP STYLE)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Container(
-              height: 45,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  hintText: 'Ask Meta AI or Search',
-                  prefixIcon: Icon(Icons.search),
-                  border: InputBorder.none,
+          //  SEARCH BAR (ONLY FOR CHATS TAB)
+          if (_currentTabIndex == 0)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Container(
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'Searching...',
+                    prefixIcon: Icon(Icons.search),
+                    border: InputBorder.none,
+                  ),
                 ),
               ),
             ),
-          ),
 
           // FILTER CHIPS
           if (_currentTabIndex == 0)
@@ -162,9 +210,17 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 children: [
                   _buildFilterChip('All'),
                   _buildFilterChip('Unread'),
-                  _buildFilterChip('Favorite'),
+                  _buildFilterChip('Favorites'),
                   _buildFilterChip('Groups'),
+                  _buildFilterChip('New Order'),
+                  _buildFilterChip('New Customer'),
+                  _buildFilterChip('Pending Payment'),
+                  _buildFilterChip('Paid'),
                   _buildFilterChip('Important'),
+                  _buildFilterChip('Order Complete'),
+                  _buildFilterChip('Follow Up'),
+                  _buildFilterChip('Lead'),
+                  _buildAddListButton(),
                 ],
               ),
             ),
@@ -183,24 +239,29 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         ],
       ),
 
-      // ✅ BOTTOM TAB BAR
+      //  BOTTOM TAB BAR
       bottomNavigationBar: Material(
-        elevation: 10,
-        child: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.primaryColor,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: Colors.grey,
-          tabs: const [
-            Tab(icon: Icon(Icons.chat), text: 'Chats'),
-            Tab(icon: Icon(Icons.groups), text: 'Communities'),
-            Tab(icon: Icon(Icons.call), text: 'Calls'),
-            Tab(icon: Icon(Icons.update), text: 'Updates'),
-          ],
+        elevation: 9,
+        child: Container(
+          height: 50,
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: AppTheme.primaryColor,
+            labelColor: AppTheme.primaryColor,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(fontSize: 10),
+            unselectedLabelStyle: const TextStyle(fontSize: 10),
+            tabs: const [
+              Tab(icon: Icon(Icons.chat, size: 18), text: 'Chats'),
+              Tab(icon: Icon(Icons.groups, size: 18), text: 'Communities'),
+              Tab(icon: Icon(Icons.call, size: 18), text: 'Calls'),
+              Tab(icon: Icon(Icons.update, size: 18), text: 'Updates'),
+            ],
+          ),
         ),
       ),
 
-      // ✅ FAB
+      //  FAB
       floatingActionButton: _currentTabIndex == 0
           ? FloatingActionButton(
               backgroundColor: AppTheme.primaryColor,
@@ -216,7 +277,20 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     );
   }
 
-  // ================= HELPERS =================
+  String _getAppBarTitle() {
+    switch (_currentTabIndex) {
+      case 0:
+        return 'Chats';
+      case 1:
+        return 'Communities';
+      case 2:
+        return 'Calls';
+      case 3:
+        return 'Updates';
+      default:
+        return 'Community';
+    }
+  }
 
   Widget _buildFilterChip(String label) {
     return Padding(
@@ -231,14 +305,70 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     );
   }
 
+  Widget _buildAddListButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NewListScreen()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 16, color: Colors.grey),
+              SizedBox(width: 4),
+              Text('New list', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   List<ChatItem> _getFilteredChats(List<ChatItem> chats) {
     switch (_selectedFilter) {
       case 'Unread':
         return chats.where((c) => c.unread > 0).toList();
+      case 'Favorites':
+        // Filter favorite chats (placeholder)
+        return [];
       case 'Groups':
         return chats
             .where((c) => c.members != null && c.members!.isNotEmpty)
             .toList();
+      case 'New Order':
+        // Filter chats with new order status
+        return [];
+      case 'New Customer':
+        // Filter chats with new customers
+        return [];
+      case 'Pending Payment':
+        // Filter chats with pending payments
+        return [];
+      case 'Paid':
+        // Filter chats with completed payments
+        return [];
+      case 'Important':
+        // Filter important chats
+        return [];
+      case 'Order Complete':
+        // Filter chats with completed orders
+        return [];
+      case 'Follow Up':
+        // Filter chats requiring follow up
+        return [];
+      case 'Lead':
+        // Filter potential leads
+        return [];
       default:
         return chats;
     }
@@ -247,10 +377,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   Widget _buildChatsTab(List<ChatItem> chats) {
     return Column(
       children: [
-        ListTile(
-          leading: const Icon(Icons.archive_outlined),
-          title: const Text('Archived'),
-          subtitle: const Text('2 chats'),
+        GestureDetector(
           onTap: () {
             Navigator.push(
               context,
@@ -258,6 +385,49 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                   builder: (_) => const ArchivedChatsScreen()),
             );
           },
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: const BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.archive_outlined,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Archived',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        '2 chats',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: Colors.grey,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
         ),
         const Divider(),
         Expanded(
