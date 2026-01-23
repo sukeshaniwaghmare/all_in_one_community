@@ -7,10 +7,21 @@ import '../../chat/presentation/chat_screen.dart';
 import '../../chat/provider/chat_provider.dart' as chat;
 import '../../calls/presentation/calls_screen.dart';
 import '../../contacts/presentation/contacts_screen.dart';
-import 'screens/settings_screen.dart';
+import '../../chat/presentation/screens_options/settings_screen.dart';
 import '../../chat/presentation/archived_chats_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'new_list_screen.dart';
+import '../../chat/presentation/screens_options/new_group_screen.dart';
+import '../../chat/presentation/screens_options/new_community_screen.dart';
+import '../../chat/presentation/screens_options/broadcast_list_screen.dart';
+import '../../chat/presentation/screens_options/linked_devices_screen.dart';
+import '../../chat/presentation/screens_options/starred_messages_screen.dart';
+import '../../chat/presentation/screens_options/payments_screen.dart';
+import '../../calls/presentation/appbar_option_screen/schedule_call_screen.dart';
+import '../../calls/presentation/appbar_option_screen/clear_call_log_screen.dart';
+import '../../status/presentation/option_appbar_screen/status_privacy_screen.dart';
+import '../../status/presentation/option_appbar_screen/create_channel_screen.dart';
+import '../../status/presentation/option_appbar_screen/find_channels_screen.dart';
 
 class CommunitySelectionScreen extends StatefulWidget {
   const CommunitySelectionScreen({super.key});
@@ -159,18 +170,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: _handleMenuAction,
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'new_group', child: Text('New group')),
-              PopupMenuItem(
-                  value: 'new_community', child: Text('New community')),
-              PopupMenuItem(
-                  value: 'broadcast_list', child: Text('Broadcast list')),
-              PopupMenuItem(
-                  value: 'Linked Devices', child: Text('Linked devices')),
-              PopupMenuItem(value: 'Starred', child: Text('Starred messages')),
-              PopupMenuItem(value: 'payments', child: Text('Payments')),
-              PopupMenuItem(value: 'settings', child: Text('Settings')),
-            ],
+            itemBuilder: (context) => _getMenuItems(),
           ),
         ],
       ),
@@ -289,6 +289,42 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         return 'Updates';
       default:
         return 'Community';
+    }
+  }
+
+  List<PopupMenuEntry<String>> _getMenuItems() {
+    switch (_currentTabIndex) {
+      case 0: // Chats tab
+        return const [
+          PopupMenuItem(value: 'new_group', child: Text('New group')),
+          PopupMenuItem(value: 'new_community', child: Text('New community')),
+          PopupMenuItem(value: 'broadcast_list', child: Text('Broadcast list')),
+          PopupMenuItem(value: 'Linked Devices', child: Text('Linked devices')),
+          PopupMenuItem(value: 'Starred', child: Text('Starred messages')),
+          PopupMenuItem(value: 'payments', child: Text('Payments')),
+          PopupMenuItem(value: 'settings', child: Text('Settings')),
+        ];
+      case 1: // Communities tab
+        return const [
+          PopupMenuItem(value: 'settings', child: Text('Settings')),
+        ];
+      case 2: // Calls tab
+        return const [
+          PopupMenuItem(value: 'schedule_call', child: Text('Schedule call')),
+          PopupMenuItem(value: 'clear_call_log', child: Text('Clear call log')),
+          PopupMenuItem(value: 'settings', child: Text('Settings')),
+        ];
+      case 3: // Updates tab
+        return const [
+          PopupMenuItem(value: 'status_privacy', child: Text('Status privacy')),
+          PopupMenuItem(value: 'create_channel', child: Text('Create channel')),
+          PopupMenuItem(value: 'find_channels', child: Text('Find channels')),
+          PopupMenuItem(value: 'settings', child: Text('Settings')),
+        ];
+      default:
+        return const [
+          PopupMenuItem(value: 'settings', child: Text('Settings')),
+        ];
     }
   }
 
@@ -482,11 +518,89 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   void _handleMenuAction(String value) {
-    if (value == 'settings') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const SettingsScreen()),
-      );
+    switch (value) {
+      case 'settings':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        );
+        break;
+      // Chat tab actions
+      case 'new_group':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NewGroupScreen()),
+        );
+        break;
+      case 'new_community':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NewCommunityScreen()),
+        );
+        break;
+      case 'broadcast_list':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BroadcastListScreen()),
+        );
+        break;
+      case 'Linked Devices':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LinkedDevicesScreen()),
+        );
+        break;
+      case 'Starred':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const StarredMessagesScreen()),
+        );
+        break;
+      case 'payments':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PaymentsScreen()),
+        );
+        break;
+      // Communities tab actions
+      case 'create_community':
+      case 'join_community':
+      case 'community_settings':
+      case 'manage_members':
+        // Handle community-specific actions
+        break;
+      // Calls tab actions
+      case 'schedule_call':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ScheduleCallScreen()),
+        );
+        break;
+      case 'clear_call_log':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ClearCallLogScreen()),
+        );
+        break;
+      // Updates tab actions
+      case 'status_privacy':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const StatusPrivacyScreen()),
+        );
+        break;
+      case 'create_channel':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CreateChannelScreen()),
+        );
+        break;
+      case 'find_channels':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const FindChannelsScreen()),
+        );
+        break;
     }
   }
 }

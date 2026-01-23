@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'call_info_screen.dart';
+import 'contact_selection_screen.dart';
 
-class CallsScreen extends StatelessWidget {
+class CallsScreen extends StatefulWidget {
   const CallsScreen({super.key});
+
+  @override
+  State<CallsScreen> createState() => _CallsScreenState();
+}
+
+class _CallsScreenState extends State<CallsScreen> {
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +59,10 @@ class CallsScreen extends StatelessWidget {
 
     return Column(
       children: [
-        // Create call link option
+        // ✅ Top action buttons (added)
+        _buildTopActions(),
+
+        // Create call link option (unchanged)
         ListTile(
           leading: Container(
             width: 50,
@@ -74,6 +84,7 @@ class CallsScreen extends StatelessWidget {
             );
           },
         ),
+
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Align(
@@ -88,8 +99,8 @@ class CallsScreen extends StatelessWidget {
             ),
           ),
         ),
-        
-        // Calls List
+
+        // Calls List (unchanged)
         Expanded(
           child: ListView.builder(
             itemCount: calls.length,
@@ -118,7 +129,9 @@ class CallsScreen extends StatelessWidget {
                     Icon(
                       _getCallIcon(call['type'] as String),
                       size: 16,
-                      color: call['type'] == 'missed' ? Colors.red : Colors.grey,
+                      color: call['type'] == 'missed'
+                          ? Colors.red
+                          : Colors.grey,
                     ),
                     const SizedBox(width: 4),
                     Text(call['time'] as String),
@@ -126,7 +139,6 @@ class CallsScreen extends StatelessWidget {
                 ),
                 trailing: GestureDetector(
                   onTap: () {
-                    print('Call icon tapped: ${call['name']}');
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -140,12 +152,13 @@ class CallsScreen extends StatelessWidget {
                     );
                   },
                   child: Icon(
-                    call['isVideo'] as bool ? Icons.videocam : Icons.call,
+                    call['isVideo'] as bool
+                        ? Icons.videocam
+                        : Icons.call,
                     color: AppTheme.primaryColor,
                   ),
                 ),
                 onTap: () {
-                  print('Call item tapped: ${call['name']}');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -166,6 +179,116 @@ class CallsScreen extends StatelessWidget {
     );
   }
 
+  // 🔹 Top action buttons widget
+  Widget _buildTopActions() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _ActionButton(
+            icon: Icons.call, 
+            label: 'Call',
+            onTap: () => _showCallDialog(),
+          ),
+          _ActionButton(
+            icon: Icons.calendar_today, 
+            label: 'Schedule',
+            onTap: () => _showScheduleDialog(),
+          ),
+          _ActionButton(
+            icon: Icons.dialpad, 
+            label: 'Keypad',
+            onTap: () => _showKeypad(),
+          ),
+          _ActionButton(
+            icon: Icons.group, 
+            label: 'Group',
+            onTap: () => _showGroupCall(),
+          ),
+          _ActionButton(
+            icon: Icons.favorite_border, 
+            label: 'Favorites',
+            onTap: () => _showFavorites(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCallDialog() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ContactSelectionScreen()),
+    );
+  }
+
+  void _showScheduleDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Schedule Call'),
+        content: const Text('Schedule a call for later'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Schedule'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showKeypad() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        padding: const EdgeInsets.all(16),
+        child: const Center(
+          child: Text('Keypad Interface', style: TextStyle(fontSize: 18)),
+        ),
+      ),
+    );
+  }
+
+  void _showGroupCall() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Group Call'),
+        content: const Text('Start a group call with multiple contacts'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Start'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFavorites() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        height: 400,
+        padding: const EdgeInsets.all(16),
+        child: const Center(
+          child: Text('Favorite Contacts', style: TextStyle(fontSize: 18)),
+        ),
+      ),
+    );
+  }
+
   IconData _getCallIcon(String type) {
     switch (type) {
       case 'incoming':
@@ -177,5 +300,39 @@ class CallsScreen extends StatelessWidget {
       default:
         return Icons.call;
     }
+  }
+}
+
+// 🔹 Action button UI
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.grey.shade200,
+            child: Icon(icon, color: Colors.black),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ],
+      ),
+    );
   }
 }
