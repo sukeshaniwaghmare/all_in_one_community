@@ -1,4 +1,3 @@
-import 'package:all_in_one_community/features/community/domain/community_type.dart';
 import 'package:flutter/material.dart';
 import '../provider/community_provider.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import '../../calls/presentation/calls_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/apptopbar.dart';
+import '../domain/community_type.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final CommunityType communityType;
@@ -21,23 +21,17 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  late final List<Widget> _screens;
-
   @override
-  void initState() {
-    super.initState();
-    _screens = [
+  Widget build(BuildContext context) {
+    final List<Widget> screens = [
       ChatListScreen(communityType: widget.communityType),
       const StatusScreen(),
       const CallsScreen(),
       const SettingsScreen(),
     ];
-  }
-
-  @override
-  Widget build(BuildContext context) {
+    
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

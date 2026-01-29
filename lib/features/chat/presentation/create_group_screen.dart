@@ -3,6 +3,8 @@ import '../../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../community/provider/community_provider.dart';
 import '../provider/chat_provider.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -14,14 +16,42 @@ class CreateGroupScreen extends StatefulWidget {
 class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final TextEditingController _searchController = TextEditingController();
   final List<Member> _selectedMembers = [];
-  
-  final List<Member> _allMembers = [
-    Member(name: 'Samiksha Rathod', avatar: 'SR'),
-    Member(name: 'k.Bhargavi', avatar: 'KB'),
-    Member(name: 'Mayuri G', avatar: 'MG'),
-    Member(name: 'Shani Waghmare', avatar: 'SW'),
-    Member(name: 'L.Vishal', avatar: 'LV'),
-  ];
+  List<Member> _allMembers = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContacts();
+  }
+
+  Future<void> _loadContacts() async {
+    try {
+      if (await Permission.contacts.request().isGranted) {
+        final contacts = await FlutterContacts.getContacts(withProperties: true);
+        setState(() {
+          _allMembers = contacts
+              .where((contact) => contact.displayName.isNotEmpty)
+              .map((contact) {
+            final initials = contact.displayName
+                .split(' ')
+                .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+                .take(2)
+                .join();
+            return Member(
+              name: contact.displayName,
+              avatar: initials.isEmpty ? 'U' : initials,
+            );
+          }).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,30 +61,34 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         children: [
           if (_selectedMembers.isNotEmpty) _selectedMembersChips(),
           Expanded(
-            child: ListView.builder(
-              itemCount: _allMembers.length,
-              itemBuilder: (context, index) {
-                final member = _allMembers[index];
-                final isSelected = _selectedMembers.contains(member);
-                return CheckboxListTile(
-                  value: isSelected,
-                  onChanged: (value) {
-                    setState(() {
-                      if (value == true) {
-                        _selectedMembers.add(member);
-                      } else {
-                        _selectedMembers.remove(member);
-                      }
-                    });
-                  },
-                  secondary: CircleAvatar(
-                    backgroundColor: AppTheme.primaryColor,
-                    child: Text(member.avatar, style: const TextStyle(color: Colors.white)),
-                  ),
-                  title: Text(member.name),
-                );
-              },
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _allMembers.isEmpty
+                    ? const Center(child: Text('No contacts found'))
+                    : ListView.builder(
+                        itemCount: _allMembers.length,
+                        itemBuilder: (context, index) {
+                          final member = _allMembers[index];
+                          final isSelected = _selectedMembers.contains(member);
+                          return CheckboxListTile(
+                            value: isSelected,
+                            onChanged: (value) {
+                              setState(() {
+                                if (value == true) {
+                                  _selectedMembers.add(member);
+                                } else {
+                                  _selectedMembers.remove(member);
+                                }
+                              });
+                            },
+                            secondary: CircleAvatar(
+                              backgroundColor: AppTheme.primaryColor,
+                              child: Text(member.avatar, style: const TextStyle(color: Colors.white)),
+                            ),
+                            title: Text(member.name),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -188,14 +222,13 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primaryColor,
-        onPressed: () {
+        onPressed: () async {
           if (_groupNameController.text.trim().isNotEmpty) {
             final groupName = _groupNameController.text.trim();
-            final memberNames = widget.selectedMembers.map((m) => m.name).toList();
+            final memberIds = widget.selectedMembers.map((m) => m.name).toList(); // In real app, use user IDs
             
-            // Save to both Community and Chat providers
-            context.read<CommunityProvider>().createGroup(groupName, memberNames);
-            context.read<ChatProvider>().createGroup(groupName, memberNames);
+            // Create group using real-time service
+            await context.read<ChatProvider>().createGroup(groupName, memberIds);
             
             Navigator.pop(context);
             Navigator.pop(context);

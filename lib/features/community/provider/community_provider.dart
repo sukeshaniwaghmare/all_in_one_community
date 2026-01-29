@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../domain/community_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class CommunityProvider extends ChangeNotifier {
   CommunityProvider() {
@@ -65,6 +67,50 @@ class CommunityProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadContacts() async {
+    try {
+      if (await Permission.contacts.request().isGranted) {
+        final contacts = await FlutterContacts.getContacts(withProperties: true);
+        _chats.clear();
+        
+        for (var contact in contacts) {
+          if (contact.displayName.isNotEmpty) {
+            final initials = contact.displayName
+                .split(' ')
+                .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+                .take(2)
+                .join();
+            
+            _chats.add(ChatItem(
+              initials: initials.isEmpty ? 'U' : initials,
+              name: contact.displayName,
+              preview: 'Tap to start conversation',
+              time: '',
+              unread: 0,
+              avatarColor: _getRandomColor(),
+            ));
+          }
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading contacts: $e');
+    }
+  }
+  
+  Color _getRandomColor() {
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.red,
+      const Color(0xFFE67E22),
+      Colors.purple,
+      Colors.teal,
+    ];
+    return colors[(DateTime.now().millisecondsSinceEpoch % colors.length)];
+  }
+
   void addMember(String name, String email) {
     final newMember = Member(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -111,83 +157,6 @@ class CommunityProvider extends ChangeNotifier {
   }
 
   Future<void> _loadGroups() async {
-    _chats.addAll([
-      const ChatItem(
-        initials: '123',
-        name: '123',
-        preview: 'Group chat active',
-        time: '10:46 AM',
-        unread: 0,
-        avatarColor: Colors.blue,
-        members: ['Samiksha Rathod', 'k.Bhargavi'],
-      ),
-      const ChatItem(
-        initials: '1234',
-        name: '1234',
-        preview: 'Group chat active',
-        time: '10:30 AM',
-        unread: 0,
-        avatarColor: Colors.green,
-        members: ['Samiksha Rathod', 'Mayuri G'],
-      ),
-      const ChatItem(
-        initials: 'CN',
-        name: 'Community Notifications',
-        preview: 'Login code: **** Do not give...',
-        time: '10:46 AM',
-        unread: 2,
-        avatarColor: Colors.red,
-      ),
-      const ChatItem(
-        initials: 'SR',
-        name: 'Samiksha Rathod',
-        preview: 'samiksha rathod joined community!',
-        time: 'Wed',
-        unread: 1,
-        avatarColor: Colors.green,
-      ),
-      const ChatItem(
-        initials: 'KB',
-        name: 'k.Bhargavi',
-        preview: 'k.Bhargavi joined community!',
-        time: 'Wed',
-        unread: 1,
-        avatarColor: Colors.orange,
-      ),
-      const ChatItem(
-        initials: 'MG',
-        name: 'Mayuri G',
-        preview: 'Mayuri G joined community!',
-        time: 'Sat',
-        unread: 1,
-        avatarColor: Color(0xFFE67E22),
-      ),
-      const ChatItem(
-        initials: 'SW',
-        name: 'Shani Waghmare',
-        preview: 'Shani Waghmare joined community!',
-        time: 'Jan 08',
-        unread: 1,
-        avatarColor: Colors.green,
-      ),
-      const ChatItem(
-        initials: 'ON',
-        name: 'Only Best Deals',
-        preview: 'This message couldn\'t be displ...',
-        time: 'Dec 30',
-        unread: 3,
-        avatarColor: Colors.blue,
-      ),
-      const ChatItem(
-        initials: 'LV',
-        name: 'L.Vishal',
-        preview: 'Hanuman Phad joined commun...',
-        time: 'Wed',
-        unread: 1,
-        avatarColor: Colors.red,
-      ),
-    ]);
-    
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('saved_groups');
     if (saved != null) {

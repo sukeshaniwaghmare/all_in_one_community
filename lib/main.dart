@@ -8,8 +8,14 @@ import 'features/chat/provider/chat_provider.dart';
 import 'features/announcements/provider/announcements_provider.dart';
 import 'features/profile/provider/profile_provider.dart';
 import 'features/auth/provider/auth_provider.dart';
+import 'features/cart/provider/cart_provider.dart';
+import 'features/calls/provider/call_provider.dart';
+import 'features/contacts/provider/contact_provider.dart';
+import 'core/supabase_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.initialize();
   runApp(const CommunityApp());
 }
 
@@ -24,8 +30,11 @@ class CommunityApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => CommunityProvider()),
         ChangeNotifierProvider(create: (context) => ChatProvider()),
+        ChangeNotifierProvider(create: (context) => CallProvider()),
         ChangeNotifierProvider(create: (context) => AnnouncementsProvider()),
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
+        ChangeNotifierProvider(create: (context) => CartProvider()),
+        ChangeNotifierProvider(create: (context) => ContactProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

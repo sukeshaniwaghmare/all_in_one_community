@@ -50,6 +50,11 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         _currentTabIndex = _tabController.index;
       });
     });
+    
+    // Load chats from ChatProvider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<chat.ChatProvider>(context, listen: false).loadChats();
+    });
   }
 
   @override
@@ -62,7 +67,17 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<CommunityProvider>(context);
-    List<ChatItem> chats = provider.chats;
+    final chatProvider = Provider.of<chat.ChatProvider>(context);
+    
+    // Use ChatProvider chats directly - they are already loaded from persistence
+    List<ChatItem> chats = chatProvider.chats.map((chatItem) => ChatItem(
+        initials: chatItem.name.isNotEmpty ? chatItem.name[0].toUpperCase() : '?',
+        name: chatItem.name,
+        preview: chatItem.lastMessage,
+        time: chatItem.time,
+        unread: chatItem.unreadCount,
+        avatarColor: Colors.blue,
+      )).toList();
 
     if (_searchController.text.isNotEmpty) {
       chats = chats
@@ -488,30 +503,48 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         ),
         const Divider(),
         Expanded(
-          child: ListView.builder(
-            itemCount: chats.length,
-            itemBuilder: (_, i) {
-              final chatItem = chats[i];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: chatItem.avatarColor,
-                  child: Text(chatItem.initials),
+          child: chats.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No chats yet',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      Text(
+                        'Start a conversation from contacts',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: chats.length,
+                  itemBuilder: (_, i) {
+                    final chatItem = chats[i];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: chatItem.avatarColor,
+                        child: Text(chatItem.initials),
+                      ),
+                      title: Text(chatItem.name),
+                      subtitle: Text(chatItem.preview, maxLines: 1),
+                      trailing: chatItem.unread > 0
+                          ? CircleAvatar(
+                              radius: 10,
+                              backgroundColor: AppTheme.primaryColor,
+                              child: Text('${chatItem.unread}',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 12)),
+                            )
+                          : null,
+                      onTap: () => _openChat(context, chatItem),
+                    );
+                  },
                 ),
-                title: Text(chatItem.name),
-                subtitle: Text(chatItem.preview, maxLines: 1),
-                trailing: chatItem.unread > 0
-                    ? CircleAvatar(
-                        radius: 10,
-                        backgroundColor: AppTheme.primaryColor,
-                        child: Text('${chatItem.unread}',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12)),
-                      )
-                    : null,
-                onTap: () => _openChat(context, chatItem),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -619,19 +652,23 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   void _openChat(BuildContext context, ChatItem item) {
-    final chatItem = chat.ChatItem(
-      id: item.name,
-      name: item.name,
-      lastMessage: item.preview,
-      time: item.time,
-      unreadCount: item.unread,
-      isGroup: false,
-      isOnline: false,
-      memberCount: 0,
+    final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
+    final actualChatItem = chatProvider.chats.firstWhere(
+      (c) => c.name == item.name,
+      orElse: () => chat.ChatItem(
+        id: item.name,
+        name: item.name,
+        lastMessage: item.preview,
+        time: item.time,
+        unreadCount: item.unread,
+        isGroup: false,
+        isOnline: false,
+        memberCount: 0,
+      ),
     );
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ChatScreen(chat: chatItem)),
+      MaterialPageRoute(builder: (_) => ChatScreen(chat: actualChatItem)),
     );
   }
 

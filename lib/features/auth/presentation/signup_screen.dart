@@ -1,123 +1,247 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../community/presentation/home screen_selection_screen.dart';
+import '../../../core/services/multi_role_service.dart';
+import 'login_screen.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final Map<String, dynamic>? extraData;
+  final bool addRoleMode;
+
+  const SignupScreen({
+    super.key,
+    this.extraData,
+    this.addRoleMode = false,
+  });
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _confirmPasswordController;
+
+  bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  String? _error;
 
+  late bool _isAddRoleMode;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.extraData;
+
+    _isAddRoleMode = widget.addRoleMode;
+
+    _nameController = TextEditingController(text: data?['name'] ?? '');
+    _emailController = TextEditingController(text: data?['email'] ?? '');
+    _phoneController = TextEditingController(text: data?['phone'] ?? '');
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  // ================= SIGNUP / ADD ROLE =================
+  Future<void> _signup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final supabase = Supabase.instance.client;
+
+    try {
+      // -------- ADD ROLE MODE --------
+      if (_isAddRoleMode) {
+        final user = supabase.auth.currentUser;
+        if (user == null) {
+          setState(() => _error = 'User not logged in');
+          return;
+        }
+
+        final service = MultiRoleService();
+        final success = await service.addUserRole(user.id, 'MEMBER');
+
+        if (!mounted) return;
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('MEMBER role added successfully')),
+          );
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          setState(() => _error = 'Failed to add role');
+        }
+        return;
+      }
+
+      // -------- NORMAL SIGNUP --------
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      final response = await supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'role': 'MEMBER',
+        },
+      );
+
+      if (response.user != null) {
+        final service = MultiRoleService();
+        await service.addUserRole(response.user!.id, 'MEMBER');
+      }
+
+      await supabase.auth.resend(
+        type: OtpType.email,
+        email: email,
+      );
+
+      if (!mounted) return;
+
+      await _showConfirmationDialog(email);
+      await supabase.auth.signOut();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showConfirmationDialog(String email) async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Verify your email'),
+        content: Text(
+          'Verification link sent to:\n\n$email',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          )
+        ],
+      ),
+    );
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-        ),
-        child: SafeArea(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
             children: [
+              const SizedBox(height: 50),
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person_add,
+                    size: 60, color: Colors.white),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                _isAddRoleMode ? 'Add MEMBER Role' : 'Create Account',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Join our community',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
               const SizedBox(height: 40),
-              const Text(
-                'Create Account',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Join our community today',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 30),
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
+
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildField(
+                      _nameController,
+                      'Full Name',
+                      Icons.person_outline,
+                      enabled: !_isAddRoleMode,
+                      validator: (v) =>
+                          !_isAddRoleMode && v!.isEmpty ? 'Required' : null,
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          _buildTextField(
-                            controller: _nameController,
-                            label: 'Full Name',
-                            icon: Icons.person,
-                          ),
-                          const SizedBox(height: 20),
-                          _buildTextField(
-                            controller: _emailController,
-                            label: 'Email',
-                            icon: Icons.email,
-                          ),
-                          const SizedBox(height: 20),
-                          _buildPasswordField(
-                            controller: _passwordController,
-                            label: 'Password',
-                            isVisible: _isPasswordVisible,
-                            onToggle: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          _buildPasswordField(
-                            controller: _confirmPasswordController,
-                            label: 'Confirm Password',
-                            isVisible: _isConfirmPasswordVisible,
-                            onToggle: () {
-                              setState(() {
-                                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 30),
-                          _buildSignupButton(),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text("Already have an account? "),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Text(
-                                  'Login',
-                                  style: TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 16),
+
+                    _buildField(
+                      _phoneController,
+                      'Phone',
+                      Icons.phone,
+                      enabled: !_isAddRoleMode,
+                      validator: (v) {
+                        if (_isAddRoleMode) return null;
+                        if (v == null || v.isEmpty) return 'Required';
+                        if (!RegExp(r'^[0-9]{10,15}$').hasMatch(v)) {
+                          return 'Invalid phone';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
+                    const SizedBox(height: 16),
+
+                    _buildField(
+                      _emailController,
+                      'Email',
+                      Icons.email_outlined,
+                      enabled: !_isAddRoleMode,
+                      validator: (v) =>
+                          v!.contains('@') ? null : 'Invalid email',
+                    ),
+
+                    if (!_isAddRoleMode) ...[
+                      const SizedBox(height: 16),
+                      _buildPasswordField(),
+                      const SizedBox(height: 16),
+                      _buildConfirmPasswordField(),
+                    ],
+
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                    ],
+
+                    const SizedBox(height: 24),
+                    _buildButton(),
+                  ],
                 ),
               ),
             ],
@@ -127,96 +251,90 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
+  Widget _buildField(
+    TextEditingController c,
+    String label,
+    IconData icon, {
+    bool enabled = true,
+    String? Function(String?)? validator,
   }) {
-    return TextField(
-      controller: controller,
+    return TextFormField(
+      controller: c,
+      enabled: enabled,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: Colors.grey[100],
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-        ),
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  Widget _buildPasswordField({
-    required TextEditingController controller,
-    required String label,
-    required bool isVisible,
-    required VoidCallback onToggle,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: !isVisible,
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: !_isPasswordVisible,
+      validator: (v) => v!.length < 6 ? 'Min 6 characters' : null,
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: const Icon(Icons.lock, color: AppTheme.primaryColor),
+        labelText: 'Password',
+        prefixIcon: const Icon(Icons.lock_outline),
         suffixIcon: IconButton(
           icon: Icon(
-            isVisible ? Icons.visibility : Icons.visibility_off,
-            color: AppTheme.primaryColor,
+            _isPasswordVisible
+                ? Icons.visibility
+                : Icons.visibility_off,
           ),
-          onPressed: onToggle,
+          onPressed: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: Colors.grey[100],
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  Widget _buildSignupButton() {
-    return Container(
+  Widget _buildConfirmPasswordField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: !_isConfirmPasswordVisible,
+      validator: (v) =>
+          v != _passwordController.text ? 'Passwords do not match' : null,
+      decoration: InputDecoration(
+        labelText: 'Confirm Password',
+        prefixIcon: const Icon(Icons.lock_outline),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isConfirmPasswordVisible
+                ? Icons.visibility
+                : Icons.visibility_off,
+          ),
+          onPressed: () => setState(
+              () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildButton() {
+    return SizedBox(
       width: double.infinity,
       height: 50,
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(25),
-      ),
       child: ElevatedButton(
-        onPressed: () {
-          if (_nameController.text.isNotEmpty && 
-              _emailController.text.isNotEmpty && 
-              _passwordController.text.isNotEmpty &&
-              _confirmPasswordController.text.isNotEmpty) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const CommunitySelectionScreen()),
-            );
-          }
-        },
+        onPressed: _isLoading ? null : _signup,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          backgroundColor: AppTheme.primaryColor,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        child: const Text(
-          'Sign Up',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                _isAddRoleMode ? 'Add Role' : 'Sign Up',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600),
+              ),
       ),
     );
   }

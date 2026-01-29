@@ -1,93 +1,194 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import '../../../core/services/realtime_chat_service.dart';
+import 'dart:async';
 
 class ChatProvider extends ChangeNotifier {
   List<ChatItem> _chats = [];
   List<Message> _messages = [];
   bool _isLoading = false;
+  
+  final RealtimeChatService _chatService = RealtimeChatService();
+  StreamSubscription? _roomsSubscription;
+  StreamSubscription? _messagesSubscription;
+  String? _currentRoomId;
 
   List<ChatItem> get chats => _chats;
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
 
+  ChatProvider() {
+    _initializeRealtime();
+    _loadSavedChats();
+  }
+
+  Future<void> _initializeRealtime() async {
+    await _chatService.initialize();
+    
+    // Listen to room updates
+    _roomsSubscription = _chatService.roomsStream.listen((rooms) {
+      _chats = rooms.map((room) => ChatItem(
+        id: room.id,
+        name: room.name,
+        lastMessage: room.lastMessage ?? 'No messages yet',
+        time: _formatTime(room.lastMessageTime ?? room.updatedAt),
+        isGroup: room.isGroup,
+      )).toList();
+      notifyListeners();
+    });
+    
+    // Listen to message updates
+    _messagesSubscription = _chatService.messagesStream.listen((messages) {
+      _messages = messages.map((msg) => Message(
+        id: msg.id,
+        text: msg.content,
+        isMe: msg.isMe,
+        time: _formatTime(msg.createdAt),
+        sender: msg.senderName,
+      )).toList();
+      notifyListeners();
+    });
+    
+    // Load initial data
+    await _chatService.loadUserRooms();
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 0) {
+      return '${dateTime.day}/${dateTime.month}';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
   void loadChats() async {
     _isLoading = true;
     notifyListeners();
     
-    // Only load default chats if empty
-    if (_chats.isEmpty) {
-      _chats = [
-        ChatItem(
-          id: '1',
-          name: 'Society Management',
-          lastMessage: 'Monthly maintenance due tomorrow',
-          time: '10:30 AM',
-          unreadCount: 3,
-          isGroup: true,
-          lastMessageSender: 'Admin',
-          memberCount: 156,
-        ),
-        ChatItem(
-          id: '2',
-          name: 'John Doe',
-          lastMessage: 'Thanks for the help!',
-          time: '9:45 AM',
-          unreadCount: 1,
-          isOnline: true,
-        ),
-      ];
-      
-      // Load saved contact names
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString('contact_names');
-      if (saved != null) {
-        final Map<String, String> contactNames = Map<String, String>.from(jsonDecode(saved));
-        for (int i = 0; i < _chats.length; i++) {
-          if (contactNames.containsKey(_chats[i].id)) {
-            _chats[i] = _chats[i].copyWith(name: contactNames[_chats[i].id]);
-          }
-        }
-      }
+    try {
+      await _chatService.loadUserRooms();
+    } catch (e) {
+      print('Error loading chats: $e');
     }
     
     _isLoading = false;
     notifyListeners();
   }
 
-  void loadMessages(String chatId) {
-    Future.microtask(() {
-      _messages = [
-        Message(
-          id: '1',
-          text: 'Hello everyone! 👋',
-          isMe: false,
-          time: '10:30 AM',
-          sender: 'John',
-        ),
-        Message(
-          id: '2',
-          text: 'Hi John! How are you doing?',
-          isMe: true,
-          time: '10:32 AM',
-        ),
-      ];
-      notifyListeners();
-    });
+  Future<void> _loadSavedChats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedChats = prefs.getString('saved_chats');
+      if (savedChats != null) {
+        final List<dynamic> chatList = jsonDecode(savedChats);
+        _chats = chatList.map((c) => ChatItem(
+          id: c['id'],
+          name: c['name'],
+          lastMessage: c['lastMessage'],
+          time: c['time'],
+          unreadCount: c['unreadCount'] ?? 0,
+          isGroup: c['isGroup'] ?? false,
+          isOnline: c['isOnline'] ?? false,
+          memberCount: c['memberCount'] ?? 0,
+          phoneNumber: c['phoneNumber'],
+        )).toList();
+      }
+    } catch (e) {
+      // Error loading saved chats
+    }
   }
 
-  void sendMessage(String text) {
-    final now = DateTime.now();
-    final timeString = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    
-    final message = Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      text: text,
-      isMe: true,
-      time: timeString,
-    );
-    _messages.add(message);
+  Future<void> _saveChats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final chatList = _chats.map((c) => {
+        'id': c.id,
+        'name': c.name,
+        'lastMessage': c.lastMessage,
+        'time': c.time,
+        'unreadCount': c.unreadCount,
+        'isGroup': c.isGroup,
+        'isOnline': c.isOnline,
+        'memberCount': c.memberCount,
+        'phoneNumber': c.phoneNumber,
+      }).toList();
+      await prefs.setString('saved_chats', jsonEncode(chatList));
+    } catch (e) {
+      // Error saving chats
+    }
+  }
+
+  void loadMessages(String chatId) async {
+    _currentRoomId = chatId;
+    _isLoading = true;
     notifyListeners();
+    
+    try {
+      await _chatService.loadMessages(chatId);
+    } catch (e) {
+      print('Error loading messages: $e');
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadSavedMessages(String chatId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedMessages = prefs.getString('messages_$chatId');
+      if (savedMessages != null) {
+        final List<dynamic> messageList = jsonDecode(savedMessages);
+        _messages = messageList.map((m) => Message(
+          id: m['id'],
+          text: m['text'],
+          isMe: m['isMe'],
+          time: m['time'],
+          sender: m['sender'],
+        )).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      // Error loading messages
+    }
+  }
+
+  Future<void> sendMessage(String text, [String? chatId]) async {
+    if (chatId == null) return;
+    
+    try {
+      await _chatService.sendMessage(
+        roomId: chatId,
+        content: text,
+      );
+    } catch (e) {
+      print('Error sending message: $e');
+    }
+  }
+
+  Future<void> _saveMessages(String chatId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final messageList = _messages.map((m) => {
+        'id': m.id,
+        'text': m.text,
+        'isMe': m.isMe,
+        'time': m.time,
+        'sender': m.sender,
+      }).toList();
+      await prefs.setString('messages_$chatId', jsonEncode(messageList));
+    } catch (e) {
+      // Error saving messages
+    }
   }
 
   void markAsRead(String chatId) {
@@ -98,23 +199,28 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  void createGroup(String groupName, List<String> memberNames) {
- 
-    
-    final newGroup = ChatItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: groupName,
-      lastMessage: 'Group created',
-      time: 'Just now',
-      unreadCount: 0,
-      isGroup: true,
-      memberCount: memberNames.length + 1,
-    );
-    _chats.insert(0, newGroup);
-    
+  Future<void> createGroup(String groupName, List<String> memberIds) async {
+    try {
+      await _chatService.createRoom(
+        name: groupName,
+        isGroup: true,
+        memberIds: memberIds,
+      );
+    } catch (e) {
+      print('Error creating group: $e');
+    }
+  }
   
-    notifyListeners();
-  
+  Future<void> createDirectChat(String userId, String userName) async {
+    try {
+      await _chatService.createRoom(
+        name: userName,
+        isGroup: false,
+        memberIds: [userId],
+      );
+    } catch (e) {
+      print('Error creating direct chat: $e');
+    }
   }
 
   void deleteGroup(String groupName) {
@@ -122,9 +228,35 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addNewChat(ChatItem newChat) {
+    // Check if chat already exists
+    final existingIndex = _chats.indexWhere((chat) => chat.id == newChat.id);
+    
+    if (existingIndex == -1) {
+      // Add new chat to the beginning of the list
+      _chats.insert(0, newChat);
+    } else {
+      // Update existing chat
+      _chats[existingIndex] = newChat;
+    }
+    
+    // Save chats to persistence
+    _saveChats();
+    
+    notifyListeners();
+  }
+
   void clearMessages() {
     _messages.clear();
     notifyListeners();
+  }
+  
+  @override
+  void dispose() {
+    _roomsSubscription?.cancel();
+    _messagesSubscription?.cancel();
+    _chatService.dispose();
+    super.dispose();
   }
 
   void updateContactName(String oldName, String newName) async {
@@ -157,6 +289,7 @@ class ChatItem {
   final bool isOnline;
   final String? lastMessageSender;
   final int memberCount;
+  final String? phoneNumber;
 
   ChatItem({
     required this.id,
@@ -168,6 +301,7 @@ class ChatItem {
     this.isOnline = false,
     this.lastMessageSender,
     this.memberCount = 0,
+    this.phoneNumber,
   });
 
   ChatItem copyWith({
@@ -180,6 +314,7 @@ class ChatItem {
     bool? isOnline,
     String? lastMessageSender,
     int? memberCount,
+    String? phoneNumber,
   }) {
     return ChatItem(
       id: id ?? this.id,
@@ -191,6 +326,7 @@ class ChatItem {
       isOnline: isOnline ?? this.isOnline,
       lastMessageSender: lastMessageSender ?? this.lastMessageSender,
       memberCount: memberCount ?? this.memberCount,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
     );
   }
 }

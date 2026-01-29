@@ -5,12 +5,14 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/apptopbar.dart';
 import 'info_screen.dart';
 import '../../media/presentation/media_viewer_screen.dart';
-import 'disappearing_messages_screen.dart';
+import 'disappearing_messages_screen_infoscreen.dart';
 import 'chat_theme_screen.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import '../../calls/provider/call_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatItem chat;
@@ -314,7 +316,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() {
     if (_messageController.text.trim().isNotEmpty) {
-      context.read<ChatProvider>().sendMessage(_messageController.text.trim());
+      context.read<ChatProvider>().sendMessage(_messageController.text.trim(), widget.chat.id);
       _messageController.clear();
       setState(() => _showEmojiPicker = false);
     }
@@ -445,33 +447,33 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _makePhoneCall() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Voice Call'),
-        content: Text('Calling ${widget.chat.name}...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('End Call'),
-          ),
-        ],
+    // Store call in history
+    context.read<CallProvider>().makeCall(widget.chat.name, '+1234567890', false);
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _CallScreen(
+          contactName: widget.chat.name,
+          isVideoCall: false,
+          isGroup: widget.chat.isGroup,
+        ),
       ),
     );
   }
 
   void _makeVideoCall() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Video Call'),
-        content: Text('Video calling ${widget.chat.name}...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('End Call'),
-          ),
-        ],
+    // Store call in history
+    context.read<CallProvider>().makeCall(widget.chat.name, '+1234567890', true);
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _CallScreen(
+          contactName: widget.chat.name,
+          isVideoCall: true,
+          isGroup: widget.chat.isGroup,
+        ),
       ),
     );
   }
@@ -913,6 +915,277 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Color _getAvatarColor(String name) {
+    const colors = [Color(0xFF5B9BD5), Color(0xFF70AD47), Color(0xFFFFC000), Color(0xFFED7D31), Color(0xFF9E480E)];
+    return colors[name.hashCode.abs() % colors.length];
+  }
+}
+
+class _CallScreen extends StatefulWidget {
+  final String contactName;
+  final bool isVideoCall;
+  final bool isGroup;
+
+  const _CallScreen({
+    required this.contactName,
+    required this.isVideoCall,
+    required this.isGroup,
+  });
+
+  @override
+  State<_CallScreen> createState() => _CallScreenState();
+}
+
+class _CallScreenState extends State<_CallScreen> with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  bool _isMuted = false;
+  bool _isSpeakerOn = false;
+  bool _isVideoOn = true;
+  String _callStatus = 'Calling...';
+  String _callDuration = '00:00';
+  int _seconds = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    
+    // Simulate call connecting after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _callStatus = 'Connected');
+        _startTimer();
+      }
+    });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _seconds++;
+          final minutes = _seconds ~/ 60;
+          final secs = _seconds % 60;
+          _callDuration = '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: widget.isVideoCall ? Colors.black : const Color(0xFF075E54),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top section with contact info
+            Expanded(
+              flex: 3,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (widget.isVideoCall)
+                      // Video call UI
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 100,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      // Voice call UI
+                      Column(
+                        children: [
+                          const SizedBox(height: 40),
+                          AnimatedBuilder(
+                            animation: _pulseAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _callStatus == 'Calling...' ? _pulseAnimation.value : 1.0,
+                                child: CircleAvatar(
+                                  radius: 80,
+                                  backgroundColor: Colors.white.withOpacity(0.2),
+                                  child: CircleAvatar(
+                                    radius: 70,
+                                    backgroundColor: widget.isGroup ? AppTheme.primaryColor : _getAvatarColor(widget.contactName),
+                                    child: Text(
+                                      widget.contactName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 30),
+                          Text(
+                            widget.contactName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _callStatus == 'Connected' ? _callDuration : _callStatus,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Bottom controls
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+              child: widget.isVideoCall ? _buildVideoCallControls() : _buildVoiceCallControls(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoiceCallControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildCallButton(
+          icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+          onPressed: () => setState(() => _isSpeakerOn = !_isSpeakerOn),
+          backgroundColor: _isSpeakerOn ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+        ),
+        _buildCallButton(
+          icon: _isMuted ? Icons.mic_off : Icons.mic,
+          onPressed: () => setState(() => _isMuted = !_isMuted),
+          backgroundColor: _isMuted ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+        ),
+        _buildCallButton(
+          icon: Icons.call_end,
+          onPressed: () => Navigator.pop(context),
+          backgroundColor: Colors.red,
+          size: 65,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVideoCallControls() {
+    return Column(
+      children: [
+        // Small self video preview
+        Align(
+          alignment: Alignment.topRight,
+          child: Container(
+            width: 100,
+            height: 140,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.person,
+                size: 40,
+                color: Colors.white54,
+              ),
+            ),
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildCallButton(
+              icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+              onPressed: () => setState(() => _isSpeakerOn = !_isSpeakerOn),
+              backgroundColor: _isSpeakerOn ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+            ),
+            _buildCallButton(
+              icon: _isVideoOn ? Icons.videocam : Icons.videocam_off,
+              onPressed: () => setState(() => _isVideoOn = !_isVideoOn),
+              backgroundColor: _isVideoOn ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.3),
+            ),
+            _buildCallButton(
+              icon: _isMuted ? Icons.mic_off : Icons.mic,
+              onPressed: () => setState(() => _isMuted = !_isMuted),
+              backgroundColor: _isMuted ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+            ),
+            _buildCallButton(
+              icon: Icons.call_end,
+              onPressed: () => Navigator.pop(context),
+              backgroundColor: Colors.red,
+              size: 65,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCallButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required Color backgroundColor,
+    double size = 55,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          color: Colors.white,
+          size: size * 0.4,
+        ),
       ),
     );
   }

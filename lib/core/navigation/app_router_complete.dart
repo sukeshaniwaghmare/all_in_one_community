@@ -87,12 +87,7 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const SettingsScreen());
       
       case contacts:
-        final args = settings.arguments as Map<String, dynamic>?;
-        return MaterialPageRoute(
-          builder: (_) => ContactsScreen(
-            isGroupCreation: args?['isGroupCreation'] ?? false,
-          ),
-        );
+        return MaterialPageRoute(builder: (_) => const ContactsScreen());
       
       case camera:
         return MaterialPageRoute(builder: (_) => const CameraScreen());

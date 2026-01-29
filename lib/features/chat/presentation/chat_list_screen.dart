@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import '../../community/domain/community_type.dart';
 import '../provider/chat_provider.dart';
 import 'package:provider/provider.dart';
-import 'chat_screen.dart';
+import 'realtime_chat_screen.dart' as chat_screen;
 import 'create_group_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/apptopbar.dart';
 import '../../../core/widgets/common_menu_items.dart';
-import '../../contacts/presentation/contacts_screen.dart';
+import '../../contacts/presentation/simple_contacts_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   final CommunityType communityType;
@@ -22,7 +22,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔵 ChatListScreen initState');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ChatProvider>().loadChats();
     });
@@ -31,13 +30,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    print('🟣 ChatListScreen didChangeDependencies');
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ChatProvider>();
-    print('🟡 ChatListScreen build - chats count: ${provider.chats.length}');
     
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -52,10 +49,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          provider.isLoading
-              ? const Center(child: CircularProgressIndicator())
+      body: provider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : provider.chats.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('No chats yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      Text('Start a conversation!', style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                )
               : ListView.separated(
                   padding: const EdgeInsets.only(bottom: 80),
                   itemCount: provider.chats.length,
@@ -65,42 +72,49 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     return _ChatListTile(chat: chat, onTap: () => _navigateToChat(context, chat));
                   },
                 ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: FloatingActionButton(
-              heroTag: "contact_fab",
-              onPressed: () {
-                print('Contact button pressed');
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ContactsScreen()),
-                );
-              },
-              backgroundColor: Colors.green,
-              child: const Icon(Icons.contacts, color: Colors.white),
-            ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: "contact_fab",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SimpleContactsScreen()),
+              );
+            },
+            backgroundColor: Colors.green,
+            child: const Icon(Icons.contacts, color: Colors.white),
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton(
+            heroTag: "chat_fab",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
+              );
+            },
+            backgroundColor: AppTheme.primaryColor,
+            child: const Icon(Icons.edit, color: Colors.white),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "chat_fab",
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
-          );
-        },
-        backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.edit, color: Colors.white),
-      ),
-
     );
   }
 
   void _navigateToChat(BuildContext context, ChatItem chat) {
     context.read<ChatProvider>().markAsRead(chat.id);
-    Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(chat: chat)));
+    Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (context) => chat_screen.RealtimeChatScreen(
+         chatId: chat.id,
+          chatName: chat.name,
+          isGroup: chat.isGroup,
+        ),
+      ),
+    );
   }
 }
 
