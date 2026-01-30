@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/chat_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/phone_call_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'calling_screen.dart';
 
 class RealtimeChatScreen extends StatefulWidget {
   final String chatId;
   final String chatName;
   final bool isGroup;
+  final String? phoneNumber;
 
   const RealtimeChatScreen({
     Key? key,
     required this.chatId,
     required this.chatName,
     this.isGroup = false,
+    this.phoneNumber,
   }) : super(key: key);
 
   @override
@@ -23,6 +28,7 @@ class _RealtimeChatScreenState extends State<RealtimeChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
+  bool _isConnected = true; // Simulate online status
 
   @override
   void initState() {
@@ -132,10 +138,12 @@ class _RealtimeChatScreenState extends State<RealtimeChatScreen> {
                   ),
                 ),
                 Text(
-                  widget.isGroup ? 'Group chat' : 'Online',
+                  widget.isGroup ? 'Group chat' : (_isConnected ? 'Online' : 'Last seen recently'),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
+                    color: widget.isGroup 
+                        ? Colors.white.withOpacity(0.8)
+                        : (_isConnected ? Colors.green : Colors.white.withOpacity(0.8)),
                   ),
                 ),
               ],
@@ -143,15 +151,57 @@ class _RealtimeChatScreenState extends State<RealtimeChatScreen> {
           ),
         ],
       ),
-      actions: const [
-        Icon(Icons.videocam),
-        SizedBox(width: 8),
-        Icon(Icons.call),
-        SizedBox(width: 8),
-        Icon(Icons.more_vert),
-        SizedBox(width: 8),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.videocam),
+          onPressed: () => _makeVideoCall(),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.call),
+          onPressed: () => _makeVoiceCall(),
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.more_vert),
+        const SizedBox(width: 8),
       ],
     );
+  }
+
+  void _makeVideoCall() async {
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity.contains(ConnectivityResult.wifi)) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CallingScreen(
+            contactName: widget.chatName,
+            phoneNumber: widget.phoneNumber ?? 'No number',
+            isVideo: true,
+          ),
+        ),
+      );
+    } else {
+      await PhoneCallService.makeCall(widget.phoneNumber ?? '', context);
+    }
+  }
+
+  void _makeVoiceCall() async {
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity.contains(ConnectivityResult.wifi)) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CallingScreen(
+            contactName: widget.chatName,
+            phoneNumber: widget.phoneNumber ?? 'No number',
+            isVideo: false,
+          ),
+        ),
+      );
+    } else {
+      await PhoneCallService.makeCall(widget.phoneNumber ?? '', context);
+    }
   }
 
   Widget _buildEmptyState() {
@@ -230,13 +280,32 @@ class _RealtimeChatScreenState extends State<RealtimeChatScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    message.time,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color:
-                          isMe ? Colors.white70 : Colors.grey.shade600,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        message.time,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color:
+                              isMe ? Colors.white70 : Colors.grey.shade600,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          message.status == MessageStatus.read
+                              ? Icons.done_all
+                              : message.status == MessageStatus.delivered
+                                  ? Icons.done_all
+                                  : Icons.done,
+                          size: 16,
+                          color: message.status == MessageStatus.read
+                              ? Colors.blue
+                              : Colors.white70,
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),

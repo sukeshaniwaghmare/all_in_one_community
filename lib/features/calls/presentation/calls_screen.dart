@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/enhanced_call_service.dart';
 import 'call_info_screen.dart';
 import 'contact_selection_screen.dart';
+import 'call_demo_widget.dart';
 import '../provider/call_provider.dart';
 import '../../contacts/presentation/contacts_screen.dart';
 
@@ -32,6 +34,16 @@ class _CallsScreenState extends State<CallsScreen> {
           if (!_isSelectionMode) _buildRecentHeader(),
           _buildCallsList(calls, callProvider),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CallDemoWidget()),
+          );
+        },
+        backgroundColor: AppTheme.primaryColor,
+        child: const Icon(Icons.play_arrow, color: Colors.white),
       ),
     );
   }
@@ -157,17 +169,27 @@ class _CallsScreenState extends State<CallsScreen> {
                       ),
                       trailing: _isSelectionMode
                           ? null
-                          : GestureDetector(
-                              onTap: () {
-                                callProvider.makeCall(call.name, call.phoneNumber, call.isVideo);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('${call.isVideo ? 'Video' : 'Audio'} calling ${call.name}...')),
-                                );
-                              },
-                              child: Icon(
-                                call.isVideo ? Icons.videocam : Icons.call,
-                                color: AppTheme.primaryColor,
-                              ),
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _makeRealCall(call.name, call.phoneNumber, false),
+                                  child: Icon(
+                                    Icons.call,
+                                    color: AppTheme.primaryColor,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                GestureDetector(
+                                  onTap: () => _makeRealCall(call.name, call.phoneNumber, true),
+                                  child: Icon(
+                                    Icons.videocam,
+                                    color: AppTheme.primaryColor,
+                                    size: 24,
+                                  ),
+                                ),
+                              ],
                             ),
                       onTap: () {
                         if (_isSelectionMode) {
@@ -256,6 +278,11 @@ class _CallsScreenState extends State<CallsScreen> {
             icon: Icons.call, 
             label: 'Call',
             onTap: () => _showCallDialog(),
+          ),
+          _ActionButton(
+            icon: Icons.call_received, 
+            label: 'Demo',
+            onTap: () => _simulateIncomingCall(),
           ),
           _ActionButton(
             icon: Icons.calendar_today, 
@@ -387,10 +414,27 @@ class _CallsScreenState extends State<CallsScreen> {
 
   void _makeCall(String name, String phoneNumber, bool isVideo) {
     setState(() => _expandedIndex = null);
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    callProvider.makeCall(name, phoneNumber, isVideo);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${isVideo ? 'Video' : 'Audio'} calling $name...')),
+    _makeRealCall(name, phoneNumber, isVideo);
+  }
+
+  void _makeRealCall(String name, String phoneNumber, bool isVideo) async {
+    // Start WhatsApp-like call interface
+    await CallService.startCall(
+      context: context,
+      contactName: name,
+      phoneNumber: phoneNumber,
+      isVideo: isVideo,
+      isIncoming: false,
+    );
+  }
+
+  void _simulateIncomingCall() async {
+    // Simulate an incoming call for demo
+    await CallService.simulateIncomingCall(
+      context: context,
+      contactName: 'John Doe',
+      phoneNumber: '+1234567890',
+      isVideo: false,
     );
   }
 
@@ -596,12 +640,14 @@ class _KeypadWidgetState extends State<KeypadWidget> {
   }
 
   void _makeCall() {
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    callProvider.makeCall('Unknown', _phoneNumber, false);
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Calling $_phoneNumber...')),
+    CallService.startCall(
+      context: context,
+      contactName: 'Unknown',
+      phoneNumber: _phoneNumber,
+      isVideo: false,
+      isIncoming: false,
     );
+    Navigator.pop(context);
   }
 
   void _addContact() {

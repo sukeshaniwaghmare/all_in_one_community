@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../provider/contact_provider.dart';
 import '../models/contact_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../chat/provider/chat_provider.dart';
 
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({Key? key}) : super(key: key);
@@ -16,7 +17,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ContactProvider>().loadContacts();
+      final contactProvider = context.read<ContactProvider>();
+      final chatProvider = context.read<ChatProvider>();
+      contactProvider.setChatProvider(chatProvider);
+      contactProvider.loadContacts();
     });
   }
 
@@ -132,7 +136,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       trailing: contact.isAppUser
           ? IconButton(
               icon: const Icon(Icons.chat, color: AppTheme.primaryColor),
-              onPressed: () => provider.startChat(contact),
+              onPressed: () => _startChatAndNavigate(contact, provider),
             )
           : TextButton(
               onPressed: () => _showInviteDialog(contact, provider),
@@ -146,12 +150,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
             ),
       onTap: () {
         if (contact.isAppUser) {
-          provider.startChat(contact);
+          _startChatAndNavigate(contact, provider);
         } else {
           _showInviteDialog(contact, provider);
         }
       },
     );
+  }
+
+  void _startChatAndNavigate(Contact contact, ContactProvider provider) async {
+    await provider.startChat(contact);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   void _showSearchDialog(BuildContext context) {
@@ -279,9 +290,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
             onPressed: () {
               provider.inviteContact(contact);
               Navigator.pop(context);
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Invitation sent to ${contact.name}'),
+                  content: Text('${contact.name} invited and added to chats'),
                   backgroundColor: AppTheme.primaryColor,
                 ),
               );

@@ -112,6 +112,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
          chatId: chat.id,
           chatName: chat.name,
           isGroup: chat.isGroup,
+          phoneNumber: chat.phoneNumber,
         ),
       ),
     );

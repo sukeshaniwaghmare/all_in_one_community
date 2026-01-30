@@ -25,34 +25,11 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _initializeRealtime() async {
-    await _chatService.initialize();
+    // Disable Supabase integration to avoid database errors
+    // await _chatService.initialize();
     
-    // Listen to room updates
-    _roomsSubscription = _chatService.roomsStream.listen((rooms) {
-      _chats = rooms.map((room) => ChatItem(
-        id: room.id,
-        name: room.name,
-        lastMessage: room.lastMessage ?? 'No messages yet',
-        time: _formatTime(room.lastMessageTime ?? room.updatedAt),
-        isGroup: room.isGroup,
-      )).toList();
-      notifyListeners();
-    });
-    
-    // Listen to message updates
-    _messagesSubscription = _chatService.messagesStream.listen((messages) {
-      _messages = messages.map((msg) => Message(
-        id: msg.id,
-        text: msg.content,
-        isMe: msg.isMe,
-        time: _formatTime(msg.createdAt),
-        sender: msg.senderName,
-      )).toList();
-      notifyListeners();
-    });
-    
-    // Load initial data
-    await _chatService.loadUserRooms();
+    // Load initial data from local storage only
+    await _loadSavedChats();
   }
 
   String _formatTime(DateTime dateTime) {
@@ -74,11 +51,8 @@ class ChatProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
-    try {
-      await _chatService.loadUserRooms();
-    } catch (e) {
-      print('Error loading chats: $e');
-    }
+    // Load from local storage only
+    await _loadSavedChats();
     
     _isLoading = false;
     notifyListeners();
@@ -132,11 +106,8 @@ class ChatProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
-    try {
-      await _chatService.loadMessages(chatId);
-    } catch (e) {
-      print('Error loading messages: $e');
-    }
+    // Load local messages only
+    await _loadSavedMessages(chatId);
     
     _isLoading = false;
     notifyListeners();
@@ -165,14 +136,28 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String text, [String? chatId]) async {
     if (chatId == null) return;
     
-    try {
-      await _chatService.sendMessage(
-        roomId: chatId,
-        content: text,
+    // Handle all chats as local chats to avoid database errors
+    final newMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      text: text,
+      isMe: true,
+      time: _formatTime(DateTime.now()),
+    );
+    
+    _messages.add(newMessage);
+    
+    // Update chat's last message
+    final chatIndex = _chats.indexWhere((c) => c.id == chatId);
+    if (chatIndex != -1) {
+      _chats[chatIndex] = _chats[chatIndex].copyWith(
+        lastMessage: text,
+        time: 'now',
       );
-    } catch (e) {
-      print('Error sending message: $e');
     }
+    
+    notifyListeners();
+    _saveMessages(chatId);
+    _saveChats();
   }
 
   Future<void> _saveMessages(String chatId) async {
@@ -211,13 +196,38 @@ class ChatProvider extends ChangeNotifier {
     }
   }
   
-  Future<void> createDirectChat(String userId, String userName) async {
+  Future<void> createDirectChatWithPhone(String contactId, String contactName, String phoneNumber) async {
     try {
-      await _chatService.createRoom(
-        name: userName,
-        isGroup: false,
-        memberIds: [userId],
+      debugPrint('Creating chat for $contactName with phone: $phoneNumber');
+      
+      final newChat = ChatItem(
+        id: contactId,
+        name: contactName,
+        lastMessage: 'Tap to start chatting',
+        time: 'now',
+        phoneNumber: phoneNumber,
       );
+      
+      addNewChat(newChat);
+    } catch (e) {
+      print('Error creating direct chat: $e');
+    }
+  }
+
+  Future<void> createDirectChat(String contactId, String contactName) async {
+    try {
+      // Extract phone number from contactId (reverse the UUID generation)
+      final phoneNumber = contactId; // For now, use contactId as phone number
+      
+      final newChat = ChatItem(
+        id: contactId,
+        name: contactName,
+        lastMessage: 'Tap to start chatting',
+        time: 'now',
+        phoneNumber: phoneNumber,
+      );
+      
+      addNewChat(newChat);
     } catch (e) {
       print('Error creating direct chat: $e');
     }
@@ -338,6 +348,7 @@ class Message {
   final String time;
   final String? sender;
   final bool isRead;
+  final MessageStatus status;
 
   Message({
     required this.id,
@@ -346,5 +357,13 @@ class Message {
     required this.time,
     this.sender,
     this.isRead = true,
+    this.status = MessageStatus.sent,
   });
+}
+
+enum MessageStatus {
+  sending,
+  sent,
+  delivered,
+  read,
 }

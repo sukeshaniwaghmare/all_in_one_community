@@ -109,7 +109,7 @@ class CallProvider with ChangeNotifier {
         'type': call.type,
         'is_video': call.isVideo,
         'avatar': call.avatar,
-        'color': call.color.value,
+        'color': call.color.value & 0xFFFFFF, // Remove alpha channel to fit in integer
         'user_id': SupabaseService.instance.currentUserId,
       });
     } catch (e) {
