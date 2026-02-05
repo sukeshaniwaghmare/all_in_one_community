@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../community/domain/community_type.dart';
-import '../provider/chat_provider.dart';
+import '../../../../community/domain/community_type.dart';
+import '../../../provider/chat_provider.dart';
 import 'package:provider/provider.dart';
-import 'realtime_chat_screen.dart' as chat_screen;
-import 'create_group_screen.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/apptopbar.dart';
-import '../../../core/widgets/common_menu_items.dart';
-import '../../contacts/presentation/simple_contacts_screen.dart';
+import '../chat_screen2/chat_screen.dart';
+import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/widgets/apptopbar.dart';
+import '../../../../../core/widgets/common_menu_items.dart';
+import '../../../../../core/services/realtime_service.dart';
+import '../../../../../core/services/auth_service.dart';
 
 class ChatListScreen extends StatefulWidget {
   final CommunityType communityType;
@@ -19,17 +19,25 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
+  final RealtimeService _realtimeService = RealtimeService();
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ChatProvider>().loadChats();
+      final userId = _authService.currentUserId;
+      if (userId != null) {
+        _realtimeService.subscribeToChats(userId);
+      }
     });
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void dispose() {
+    _realtimeService.unsubscribeFromChats();
+    super.dispose();
   }
 
   @override
@@ -58,7 +66,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     children: [
                       Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
                       SizedBox(height: 16),
-                      Text('No chats yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      Text('No users found', style: TextStyle(fontSize: 18, color: Colors.grey)),
                       Text('Start a conversation!', style: TextStyle(color: Colors.grey)),
                     ],
                   ),
@@ -69,60 +77,28 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   separatorBuilder: (context, index) => const Divider(height: 1, indent: 72),
                   itemBuilder: (context, index) {
                     final chat = provider.chats[index];
-                    return _ChatListTile(chat: chat, onTap: () => _navigateToChat(context, chat));
+                    return _UserProfileTile(chat: chat, onTap: () => _navigateToChat(context, chat));
                   },
                 ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: "contact_fab",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SimpleContactsScreen()),
-              );
-            },
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.contacts, color: Colors.white),
-          ),
-          const SizedBox(width: 16),
-          FloatingActionButton(
-            heroTag: "chat_fab",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
-              );
-            },
-            backgroundColor: AppTheme.primaryColor,
-            child: const Icon(Icons.edit, color: Colors.white),
-          ),
-        ],
-      ),
+      
     );
   }
 
-  void _navigateToChat(BuildContext context, ChatItem chat) {
-    context.read<ChatProvider>().markAsRead(chat.id);
+  void _navigateToChat(BuildContext context, chat) {
     Navigator.push(
       context, 
       MaterialPageRoute(
-        builder: (context) => chat_screen.RealtimeChatScreen(
-         chatId: chat.id,
-          chatName: chat.name,
-          isGroup: chat.isGroup,
-        ),
+        builder: (context) => ChatScreen(chat: chat),
       ),
     );
   }
 }
 
-class _ChatListTile extends StatelessWidget {
-  final ChatItem chat;
+class _UserProfileTile extends StatelessWidget {
+  final dynamic chat;
   final VoidCallback onTap;
 
-  const _ChatListTile({required this.chat, required this.onTap});
+  const _UserProfileTile({required this.chat, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -133,31 +109,18 @@ class _ChatListTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: chat.isGroup ? AppTheme.primaryColor : _getAvatarColor(chat.name),
-                  child: Text(
-                    chat.name[0].toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 20),
-                  ),
-                ),
-                if (chat.isOnline && !chat.isGroup)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: AppTheme.onlineColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
-                      ),
-                    ),
-                  ),
-              ],
+            CircleAvatar(
+              radius: 28,
+              backgroundImage: chat.profileImage != null 
+                  ? NetworkImage(chat.profileImage!) 
+                  : null,
+              backgroundColor: _getAvatarColor(chat.name),
+              child: chat.profileImage == null 
+                  ? Text(
+                      chat.name[0].toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 20),
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -175,30 +138,15 @@ class _ChatListTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      if (chat.isGroup && chat.lastMessageSender != null)
-                        Text(
-                          '${chat.lastMessageSender}: ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: chat.unreadCount > 0 ? AppTheme.textPrimary : AppTheme.textSecondary,
-                            fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400,
-                          ),
-                        ),
-                      Expanded(
-                        child: Text(
-                          chat.lastMessage,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: chat.unreadCount > 0 ? AppTheme.textPrimary : AppTheme.textSecondary,
-                            fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    chat.lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: chat.unreadCount > 0 ? AppTheme.textPrimary : AppTheme.textSecondary,
+                      fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400,
+                    ),
                   ),
                 ],
               ),
@@ -208,7 +156,7 @@ class _ChatListTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  chat.time,
+                  '${chat.lastMessageTime.hour}:${chat.lastMessageTime.minute.toString().padLeft(2, '0')}',
                   style: TextStyle(
                     fontSize: 13,
                     color: chat.unreadCount > 0 ? AppTheme.primaryColor : AppTheme.textSecondary,

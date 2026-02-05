@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../../../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import '../../community/provider/community_provider.dart';
-import '../provider/chat_provider.dart';
+import '../../../../../community/provider/community_provider.dart';
+import '../../../../provider/chat_provider.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 

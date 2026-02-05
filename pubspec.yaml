@@ -48,6 +48,10 @@ dependencies:
   emoji_picker_flutter: ^2.0.0
   permission_handler: ^11.0.1
   flutter_contacts: ^1.1.7+1
+  video_player: ^2.8.2
+  flutter_local_notifications: ^17.2.3
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
   
   # Supabase
   supabase_flutter: ^2.5.6

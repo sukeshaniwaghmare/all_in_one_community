@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
-import 'create_group_screen.dart';
+import 'option_screen/create_group_screen.dart';
 import 'package:provider/provider.dart';
-import '../../community/provider/community_provider.dart';
-import '../provider/chat_provider.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/apptopbar.dart';
+import '../../../../community/provider/community_provider.dart';
+import '../../../provider/chat_provider.dart';
+import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/widgets/apptopbar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
-import 'media_screen.dart';
-import '../../notifications/presentation/notification_screen.dart';
-import 'disappearing_messages_screen_infoscreen.dart';
-import 'advanced_chat_privacy_screen_infoscreen .dart';
-import 'edit_contact_screen.dart';
-import 'security_code_screen.dart';
-import '../../calls/presentation/call_info_screen.dart';
-import '../../video_call/presentation/video_call_screen.dart';
+import '../chat_screen2/option_screen/media_screen.dart';
+import '../../../../notifications/presentation/notification_screen.dart';
+import 'option_screen/disappearing_messages_screen_infoscreen.dart';
+import 'option_screen/advanced_chat_privacy_screen_infoscreen .dart';
+import 'option_screen/edit_contact_screen.dart';
+import '../../../../calls/presentation/call_info_screen.dart';
+import '../../../../video_call/presentation/video_call_screen.dart';
 
 class InfoScreen extends StatefulWidget {
   final String name;
@@ -100,9 +99,7 @@ class _InfoScreenState extends State<InfoScreen> {
                 case 'edit':
                   _editContact();
                   break;
-                case 'verify':
-                  _verifySecurityCode();
-                  break;
+                
               }
             },
             itemBuilder: (context) => [
@@ -635,7 +632,6 @@ class _InfoScreenState extends State<InfoScreen> {
   void _deleteGroup() {
     Provider.of<ChatProvider>(context, listen: false).deleteGroup(widget.name);
     Navigator.pop(context);
-    Navigator.pop(context);
   }
 
   void _editProfileImage() {
@@ -789,14 +785,7 @@ class _InfoScreenState extends State<InfoScreen> {
     }
   }
 
-  void _verifySecurityCode() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SecurityCodeScreen(contactName: widget.name),
-      ),
-    );
-  }
+ 
 
   void _saveProfileImage(String imagePath) {
     // For now, just store locally. You can extend this later to save to providers
@@ -824,14 +813,6 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   void _showAddToListDialog() {
-    final lists = [
-      {'name': 'Work', 'icon': Icons.work_outline},
-      {'name': 'Family', 'icon': Icons.family_restroom},
-      {'name': 'Friends', 'icon': Icons.people_outline},
-      {'name': 'Important', 'icon': Icons.star_outline},
-      {'name': 'Blocked', 'icon': Icons.block},
-    ];
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -870,24 +851,9 @@ class _InfoScreenState extends State<InfoScreen> {
               ),
             ),
             const Divider(height: 1),
-            ...lists.map((list) => 
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                  child: Icon(list['icon'] as IconData, color: AppTheme.primaryColor, size: 20),
-                ),
-                title: Text(list['name'] as String),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Added to ${list['name']} list'),
-                      backgroundColor: AppTheme.primaryColor,
-                    ),
-                  );
-                },
-              ),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('No lists available'),
             ),
             const SizedBox(height: 20),
           ],
@@ -1082,7 +1048,7 @@ class ChatSearchDelegate extends SearchDelegate<String> {
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
-            '${message.sender ?? (message.isMe ? 'You' : 'Unknown')} • ${message.time}',
+            '${message.senderName} • ${_formatMessageTime(message.timestamp)}',
             style: const TextStyle(fontSize: 12),
           ),
           onTap: () {
@@ -1091,5 +1057,20 @@ class ChatSearchDelegate extends SearchDelegate<String> {
         );
       },
     );
+  }
+
+  String _formatMessageTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'now';
+    }
   }
 }

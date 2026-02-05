@@ -1,3 +1,4 @@
+import 'package:all_in_one_community/features/community/provider/community_provider.dart' as chat_provider;
 import 'package:flutter/material.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
@@ -5,8 +6,8 @@ import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/community/presentation/home screen_selection_screen.dart';
 import '../../features/community/presentation/main_navigation_screen.dart';
 import '../../features/community/domain/community_type.dart';
-import '../../features/chat/presentation/chat_screen.dart';
-import '../../features/chat/presentation/create_group_screen.dart';
+import '../../features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
+import '../../features/chat/presentation/widgets/chats_creen3/option_screen/create_group_screen.dart';
 import '../../features/status/presentation/status_screen.dart';
 import '../../features/calls/presentation/calls_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
@@ -70,7 +71,7 @@ class AppRouter {
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
           builder: (_) => ChatScreen(
-            chat: args?['chat'] as chat_provider.ChatItem,
+            chat: args?['chat'],
           ),
         );
       

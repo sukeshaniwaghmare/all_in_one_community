@@ -1,350 +1,269 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:flutter_contacts/flutter_contacts.dart';
-import '../../../core/services/realtime_chat_service.dart';
+import '../data/models/chat_model.dart';
+import '../domain/usecases/get_chats_usecase.dart';
+import '../domain/usecases/get_messages_usecase.dart';
+import '../domain/usecases/send_message_usecase.dart';
+import '../../../core/services/realtime_service.dart';
+import '../../../core/services/auth_service.dart';
+import '../data/datasources/chat_datasource.dart';
 import 'dart:async';
 
 class ChatProvider extends ChangeNotifier {
-  List<ChatItem> _chats = [];
-  List<Message> _messages = [];
-  bool _isLoading = false;
-  
-  final RealtimeChatService _chatService = RealtimeChatService();
-  StreamSubscription? _roomsSubscription;
-  StreamSubscription? _messagesSubscription;
-  String? _currentRoomId;
+  final GetChatsUseCase getChatsUseCase;
+  final GetMessagesUseCase getMessagesUseCase;
+  final SendMessageUseCase sendMessageUseCase;
+  final RealtimeService _realtimeService = RealtimeService();
+  final AuthService _authService = AuthService();
+  final ChatDataSource _chatDataSource = ChatDataSource();
 
-  List<ChatItem> get chats => _chats;
-  List<Message> get messages => _messages;
+  ChatProvider({
+    required this.getChatsUseCase,
+    required this.getMessagesUseCase,
+    required this.sendMessageUseCase,
+  }) {
+    _initializeRealtimeListeners();
+  }
+
+  List<Chat> _chats = [];
+  List<ChatMessage> _messages = [];
+  bool _isLoading = false;
+
+  /// ✅ This is RECEIVER USER ID (UUID)
+  String? _currentReceiverUserId;
+
+  StreamSubscription? _messageSubscription;
+  StreamSubscription? _chatSubscription;
+
+  List<Chat> get chats => _chats;
+  List<ChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
 
-  ChatProvider() {
-    _initializeRealtime();
-    _loadSavedChats();
-  }
+  // -------------------- LOAD CHATS --------------------
 
-  Future<void> _initializeRealtime() async {
-    await _chatService.initialize();
-    
-    // Listen to room updates
-    _roomsSubscription = _chatService.roomsStream.listen((rooms) {
-      _chats = rooms.map((room) => ChatItem(
-        id: room.id,
-        name: room.name,
-        lastMessage: room.lastMessage ?? 'No messages yet',
-        time: _formatTime(room.lastMessageTime ?? room.updatedAt),
-        isGroup: room.isGroup,
-      )).toList();
-      notifyListeners();
-    });
-    
-    // Listen to message updates
-    _messagesSubscription = _chatService.messagesStream.listen((messages) {
-      _messages = messages.map((msg) => Message(
-        id: msg.id,
-        text: msg.content,
-        isMe: msg.isMe,
-        time: _formatTime(msg.createdAt),
-        sender: msg.senderName,
-      )).toList();
-      notifyListeners();
-    });
-    
-    // Load initial data
-    await _chatService.loadUserRooms();
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-    
-    if (difference.inDays > 0) {
-      return '${dateTime.day}/${dateTime.month}';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
-  }
-
-  void loadChats() async {
+  Future<void> loadChats() async {
     _isLoading = true;
     notifyListeners();
-    
-    try {
-      await _chatService.loadUserRooms();
-    } catch (e) {
-      print('Error loading chats: $e');
-    }
-    
-    _isLoading = false;
-    notifyListeners();
-  }
 
-  Future<void> _loadSavedChats() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedChats = prefs.getString('saved_chats');
-      if (savedChats != null) {
-        final List<dynamic> chatList = jsonDecode(savedChats);
-        _chats = chatList.map((c) => ChatItem(
-          id: c['id'],
-          name: c['name'],
-          lastMessage: c['lastMessage'],
-          time: c['time'],
-          unreadCount: c['unreadCount'] ?? 0,
-          isGroup: c['isGroup'] ?? false,
-          isOnline: c['isOnline'] ?? false,
-          memberCount: c['memberCount'] ?? 0,
-          phoneNumber: c['phoneNumber'],
-        )).toList();
-      }
+      _chats = await getChatsUseCase();
     } catch (e) {
-      // Error loading saved chats
+      debugPrint('Error loading chats: $e');
+      _chats = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  Future<void> _saveChats() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final chatList = _chats.map((c) => {
-        'id': c.id,
-        'name': c.name,
-        'lastMessage': c.lastMessage,
-        'time': c.time,
-        'unreadCount': c.unreadCount,
-        'isGroup': c.isGroup,
-        'isOnline': c.isOnline,
-        'memberCount': c.memberCount,
-        'phoneNumber': c.phoneNumber,
-      }).toList();
-      await prefs.setString('saved_chats', jsonEncode(chatList));
-    } catch (e) {
-      // Error saving chats
-    }
-  }
+  // -------------------- LOAD MESSAGES --------------------
 
-  void loadMessages(String chatId) async {
-    _currentRoomId = chatId;
+  /// receiverUserId = UUID
+  Future<void> loadMessages(String receiverUserId) async {
     _isLoading = true;
     notifyListeners();
-    
-    try {
-      await _chatService.loadMessages(chatId);
-    } catch (e) {
-      print('Error loading messages: $e');
-    }
-    
-    _isLoading = false;
-    notifyListeners();
-  }
 
-  Future<void> _loadSavedMessages(String chatId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedMessages = prefs.getString('messages_$chatId');
-      if (savedMessages != null) {
-        final List<dynamic> messageList = jsonDecode(savedMessages);
-        _messages = messageList.map((m) => Message(
-          id: m['id'],
-          text: m['text'],
-          isMe: m['isMe'],
-          time: m['time'],
-          sender: m['sender'],
-        )).toList();
-        notifyListeners();
+      // Check if receiverUserId is a valid UUID format
+      if (!_isValidUUID(receiverUserId)) {
+        print('Invalid UUID format: $receiverUserId. Skipping database call.');
+        _messages = [];
+        return;
       }
+
+      if (_currentReceiverUserId != receiverUserId) {
+        _messages = [];
+        _currentReceiverUserId = receiverUserId;
+      }
+
+      final newMessages = await getMessagesUseCase(receiverUserId);
+      _messages = newMessages;
+
+      _subscribeToMessages(receiverUserId);
     } catch (e) {
-      // Error loading messages
+      debugPrint('Error loading messages: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  Future<void> sendMessage(String text, [String? chatId]) async {
-    if (chatId == null) return;
+  bool _isValidUUID(String uuid) {
+    // More strict validation - only allow proper UUID format
+    final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    final isValid = uuidRegex.hasMatch(uuid);
     
+    // Also reject any UUID that starts with 'local_' or contains non-hex characters
+    if (uuid.startsWith('local_') || uuid.contains('_')) {
+      return false;
+    }
+    
+    return isValid;
+  }
+
+  // -------------------- SEND MESSAGE --------------------
+
+  Future<void> sendMessage(String text, String receiverUserId) async {
+    final currentUserId = _authService.currentUserId;
+
+    if (currentUserId == null) {
+      debugPrint('No authenticated user');
+      return;
+    }
+
+    // Check if receiverUserId is a valid UUID format
+    if (!_isValidUUID(receiverUserId)) {
+      print('Invalid UUID format: $receiverUserId. Skipping database call.');
+      return;
+    }
+
+    final message = ChatMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      text: text,
+      senderId: currentUserId,     // ✅ UUID
+      receiverId: receiverUserId,  // ✅ UUID
+      senderName: 'Me',
+      timestamp: DateTime.now(),
+      isMe: true,
+    );
+
+    // optimistic UI
+    _messages.add(message);
+    notifyListeners();
+
     try {
-      await _chatService.sendMessage(
-        roomId: chatId,
-        content: text,
-      );
+      await sendMessageUseCase(message);
     } catch (e) {
-      print('Error sending message: $e');
+      debugPrint('Error sending message: $e');
     }
   }
 
-  Future<void> _saveMessages(String chatId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final messageList = _messages.map((m) => {
-        'id': m.id,
-        'text': m.text,
-        'isMe': m.isMe,
-        'time': m.time,
-        'sender': m.sender,
-      }).toList();
-      await prefs.setString('messages_$chatId', jsonEncode(messageList));
-    } catch (e) {
-      // Error saving messages
-    }
-  }
+  // -------------------- UPDATE CONTACT NAME --------------------
 
-  void markAsRead(String chatId) {
-    final index = _chats.indexWhere((c) => c.id == chatId);
+  void updateContactName(String oldName, String newName) {
+    final index = _chats.indexWhere((chat) => chat.name == oldName);
     if (index != -1) {
-      _chats[index] = _chats[index].copyWith(unreadCount: 0);
+      final oldChat = _chats[index];
+      _chats[index] = Chat(
+        id: oldChat.id,
+        name: newName,
+        lastMessage: oldChat.lastMessage,
+        lastMessageTime: oldChat.lastMessageTime,
+        unreadCount: oldChat.unreadCount,
+        profileImage: oldChat.profileImage,
+        bio: oldChat.bio,
+        phone: oldChat.phone,
+        email: oldChat.email,
+        username: oldChat.username,
+        isGroup: oldChat.isGroup,
+        receiverUserId: oldChat.receiverUserId,
+      );
       notifyListeners();
     }
   }
 
-  Future<void> createGroup(String groupName, List<String> memberIds) async {
-    try {
-      await _chatService.createRoom(
-        name: groupName,
-        isGroup: true,
-        memberIds: memberIds,
-      );
-    } catch (e) {
-      print('Error creating group: $e');
-    }
-  }
-  
-  Future<void> createDirectChat(String userId, String userName) async {
-    try {
-      await _chatService.createRoom(
-        name: userName,
-        isGroup: false,
-        memberIds: [userId],
-      );
-    } catch (e) {
-      print('Error creating direct chat: $e');
-    }
-  }
+  // -------------------- DELETE GROUP --------------------
 
   void deleteGroup(String groupName) {
     _chats.removeWhere((chat) => chat.name == groupName && chat.isGroup);
     notifyListeners();
   }
 
-  void addNewChat(ChatItem newChat) {
-    // Check if chat already exists
-    final existingIndex = _chats.indexWhere((chat) => chat.id == newChat.id);
+  // -------------------- CREATE GROUP --------------------
+
+  Future<void> createGroup(String groupName, List<String> memberIds) async {
+    final newGroup = Chat(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: groupName,
+      lastMessage: 'Group created',
+      lastMessageTime: DateTime.now(),
+      unreadCount: 0,
+      isGroup: true,
+      receiverUserId: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
     
-    if (existingIndex == -1) {
-      // Add new chat to the beginning of the list
-      _chats.insert(0, newChat);
-    } else {
-      // Update existing chat
-      _chats[existingIndex] = newChat;
-    }
-    
-    // Save chats to persistence
-    _saveChats();
-    
+    _chats.insert(0, newGroup);
     notifyListeners();
   }
 
-  void clearMessages() {
-    _messages.clear();
+  // -------------------- MESSAGE STATUS --------------------
+
+  Future<void> markMessagesAsDelivered(String receiverUserId) async {
+    try {
+      await _chatDataSource.markMessagesAsDelivered(receiverUserId);
+    } catch (e) {
+      debugPrint('Error marking messages as delivered: $e');
+    }
+  }
+
+  Future<void> markMessagesAsRead(String receiverUserId) async {
+    try {
+      await _chatDataSource.markMessagesAsRead(receiverUserId);
+    } catch (e) {
+      debugPrint('Error marking messages as read: $e');
+    }
+  }
+
+  // -------------------- REALTIME --------------------
+
+  void _initializeRealtimeListeners() {
+    _messageSubscription =
+        _realtimeService.messageStream.listen(_handleNewMessage);
+
+    _chatSubscription =
+        _realtimeService.chatStream.listen(_handleChatUpdate);
+  }
+
+  void _subscribeToMessages(String receiverUserId) {
+    _realtimeService.subscribeToMessages(receiverUserId);
+  }
+
+  void _handleNewMessage(Map<String, dynamic> data) {
+    final currentUserId = _authService.currentUserId;
+
+    final message = ChatMessage(
+      id: data['id'].toString(),
+      text: data['message'] ?? '',
+      senderId: data['sender_id'],
+      receiverId: data['receiver_id'],
+      senderName: 'User',
+      timestamp: DateTime.parse(data['created_at']),
+      isMe: data['sender_id'] == currentUserId,
+    );
+
+    // avoid duplicates
+    if (_messages.any((m) => m.id == message.id)) return;
+
+    _messages.add(message);
     notifyListeners();
   }
-  
+
+  void _handleChatUpdate(Map<String, dynamic> data) {
+    final currentUserId = _authService.currentUserId;
+
+    final index = _chats.indexWhere(
+      (chat) => chat.receiverUserId == data['sender_id'] ||
+                chat.receiverUserId == data['receiver_id'],
+    );
+
+    if (index == -1) return;
+
+    final chat = _chats[index];
+
+    _chats[index] = chat.copyWith(
+      lastMessage: data['message'],
+      lastMessageTime: DateTime.parse(data['created_at']),
+      unreadCount:
+          chat.unreadCount + (data['sender_id'] != currentUserId ? 1 : 0),
+    );
+
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    _roomsSubscription?.cancel();
-    _messagesSubscription?.cancel();
-    _chatService.dispose();
+    _messageSubscription?.cancel();
+    _chatSubscription?.cancel();
+    _realtimeService.dispose();
     super.dispose();
   }
-
-  void updateContactName(String oldName, String newName) async {
-    final index = _chats.indexWhere((chat) => chat.name == oldName);
-    if (index != -1) {
-      _chats[index] = _chats[index].copyWith(name: newName);
-      
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      Map<String, String> contactNames = {};
-      final saved = prefs.getString('contact_names');
-      if (saved != null) {
-        contactNames = Map<String, String>.from(jsonDecode(saved));
-      }
-      contactNames[_chats[index].id] = newName;
-      await prefs.setString('contact_names', jsonEncode(contactNames));
-      
-      notifyListeners();
-    }
-  }
-}
-
-class ChatItem {
-  final String id;
-  final String name;
-  final String lastMessage;
-  final String time;
-  final int unreadCount;
-  final bool isGroup;
-  final bool isOnline;
-  final String? lastMessageSender;
-  final int memberCount;
-  final String? phoneNumber;
-
-  ChatItem({
-    required this.id,
-    required this.name,
-    required this.lastMessage,
-    required this.time,
-    this.unreadCount = 0,
-    this.isGroup = false,
-    this.isOnline = false,
-    this.lastMessageSender,
-    this.memberCount = 0,
-    this.phoneNumber,
-  });
-
-  ChatItem copyWith({
-    String? id,
-    String? name,
-    String? lastMessage,
-    String? time,
-    int? unreadCount,
-    bool? isGroup,
-    bool? isOnline,
-    String? lastMessageSender,
-    int? memberCount,
-    String? phoneNumber,
-  }) {
-    return ChatItem(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      lastMessage: lastMessage ?? this.lastMessage,
-      time: time ?? this.time,
-      unreadCount: unreadCount ?? this.unreadCount,
-      isGroup: isGroup ?? this.isGroup,
-      isOnline: isOnline ?? this.isOnline,
-      lastMessageSender: lastMessageSender ?? this.lastMessageSender,
-      memberCount: memberCount ?? this.memberCount,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-    );
-  }
-}
-
-class Message {
-  final String id;
-  final String text;
-  final bool isMe;
-  final String time;
-  final String? sender;
-  final bool isRead;
-
-  Message({
-    required this.id,
-    required this.text,
-    required this.isMe,
-    required this.time,
-    this.sender,
-    this.isRead = true,
-  });
 }

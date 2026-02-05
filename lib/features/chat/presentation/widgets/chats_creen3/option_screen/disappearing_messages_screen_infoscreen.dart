@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/apptopbar.dart';
+import '../../../../../../core/theme/app_theme.dart';
+import '../../../../../../core/widgets/apptopbar.dart';
 
 class DisappearingMessagesScreen extends StatefulWidget {
   const DisappearingMessagesScreen({super.key});

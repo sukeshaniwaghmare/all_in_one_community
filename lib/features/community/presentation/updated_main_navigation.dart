@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../provider/community_provider.dart';
 import 'package:provider/provider.dart';
-import '../../chat/presentation/chat_list_screen.dart';
+import '../../chat/presentation/widgets/chat_screen1/chat_list_screen.dart';
 import '../../status/presentation/status_screen.dart';
 import '../../calls/presentation/calls_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
