@@ -10,7 +10,6 @@ create table public.messages (
   status character varying(20) null default 'sent'::character varying,
   media_url text null,
   thumbnail_url text null,
-  image_path text null,
   is_deleted boolean null default false,
   deleted_for text null,
   constraint messages_pkey primary key (id),
@@ -47,3 +46,7 @@ create index IF not exists messages_conversation_idx on public.messages using bt
 create trigger messages_updated_at BEFORE
 update on messages for EACH row
 execute FUNCTION handle_updated_at ();
+
+create trigger on_message_created
+after INSERT on messages for EACH row
+execute FUNCTION increment_unread_count ();

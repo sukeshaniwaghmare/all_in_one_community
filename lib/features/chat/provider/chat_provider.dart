@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/chat_model.dart';
 import '../domain/usecases/get_chats_usecase.dart';
 import '../domain/usecases/get_messages_usecase.dart';
@@ -6,6 +7,7 @@ import '../domain/usecases/send_message_usecase.dart';
 import '../../../core/services/realtime_service.dart';
 import '../../../core/services/auth_service.dart';
 import '../data/datasources/chat_datasource.dart';
+import '../../notifications/services/services/fcm_service.dart';
 import 'dart:async';
 
 class ChatProvider extends ChangeNotifier {
@@ -249,7 +251,7 @@ class ChatProvider extends ChangeNotifier {
       senderName: 'User',
       timestamp: DateTime.parse(data['created_at']),
       type: _getMessageTypeFromString(data['message_type']),
-      mediaUrl: data['media_url'], // This will now contain the Supabase Storage URL
+      mediaUrl: data['media_url'],
       isMe: data['sender_id'] == currentUserId,
     );
 
@@ -261,7 +263,28 @@ class ChatProvider extends ChangeNotifier {
 
     print('Adding new message to list: ${message.text}');
     _messages.add(message);
+    
+    // Show notification if not own message
+    if (!message.isMe) {
+      _showLocalNotification(message.text, data['sender_id']);
+    }
+    
     notifyListeners();
+  }
+
+  Future<void> _showLocalNotification(String message, String senderId) async {
+    try {
+      final sender = await Supabase.instance.client
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', senderId)
+          .single();
+      
+      final senderName = sender['full_name'] ?? 'Someone';
+      await FCMService.showNotification(senderName, message, senderId);
+    } catch (e) {
+      print('Error showing notification: $e');
+    }
   }
 
   MessageType _getMessageTypeFromString(String? type) {

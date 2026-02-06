@@ -1,13 +1,14 @@
-import 'package:all_in_one_community/features/notifications/services/notification_service.dart';
 import 'package:flutter/material.dart';
-import 'features/auth/presentation/login_screen.dart';
-import 'features/notifications/services/services/fcm_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/auth_wrapper.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
-import 'features/notifications/services/notification_service.dart' as local_notifications;
+import 'features/notifications/services/services/fcm_service.dart';
 import 'package:provider/provider.dart';
 import 'features/community/provider/community_provider.dart';
 import 'features/chat/provider/chat_provider.dart';
+import 'features/chat/provider/unread_count_provider.dart';
 import 'features/chat/data/datasources/chat_datasource.dart';
 import 'features/chat/data/repositories/chat_repository_impl.dart';
 import 'features/chat/domain/usecases/get_chats_usecase.dart';
@@ -21,10 +22,18 @@ import 'features/calls/provider/call_provider.dart';
 import 'features/contacts/provider/contact_provider.dart';
 import 'core/supabase_service.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('📩 Background message: ${message.notification?.title}');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await SupabaseService.initialize();
-  await NotificationService.initialize();
+  await FCMService.initialize();
   runApp(const CommunityApp());
 }
 
@@ -38,6 +47,7 @@ class CommunityApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => CommunityProvider()),
+        ChangeNotifierProvider(create: (context) => UnreadCountProvider()..initialize()),
         ChangeNotifierProvider(create: (context) {
           final dataSource = ChatDataSource();
           final repository = ChatRepositoryImpl(dataSource);
@@ -60,7 +70,7 @@ class CommunityApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const LoginScreen(),
+            home: const AuthWrapper(),
             debugShowCheckedModeBanner: false,
           );
         },

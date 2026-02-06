@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class PaymentsScreen extends StatelessWidget {
   const PaymentsScreen({super.key});
@@ -9,11 +9,11 @@ class PaymentsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('Payments', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('Payments', style: TextStyle(color: const Color(0xFF075E54))),
         actions: [
           IconButton(
-            icon: Icon(Icons.history, color: AppTheme.primaryColor),
+            icon: Icon(Icons.history, color: const Color(0xFF075E54)),
             onPressed: () => _showPaymentHistory(context),
           ),
         ],
@@ -44,7 +44,7 @@ class PaymentsScreen extends StatelessWidget {
                         icon: const Icon(Icons.send),
                         label: const Text('Send Money'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
+                          backgroundColor: const Color(0xFF075E54),
                           minimumSize: const Size(0, 48),
                         ),
                       ),

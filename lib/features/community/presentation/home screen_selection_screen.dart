@@ -717,7 +717,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ChatScreen(chat: existingChat)),
+      MaterialPageRoute(builder: (_) => ChatScreen(chat: existingChat as dynamic)),
     );
   }
 

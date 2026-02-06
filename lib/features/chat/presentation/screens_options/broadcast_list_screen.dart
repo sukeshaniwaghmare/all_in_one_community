@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class BroadcastListScreen extends StatefulWidget {
   const BroadcastListScreen({super.key});
@@ -23,12 +23,12 @@ class _BroadcastListScreenState extends State<BroadcastListScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('New Broadcast', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('New Broadcast', style: TextStyle(color: const Color(0xFF075E54))),
         actions: [
           IconButton(
             onPressed: _selectedContacts.isNotEmpty ? _createBroadcast : null,
-            icon: Icon(Icons.check, color: AppTheme.primaryColor),
+            icon: Icon(Icons.check, color: const Color(0xFF075E54)),
           ),
         ],
       ),

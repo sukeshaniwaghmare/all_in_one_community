@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/chat_model.dart';
 import '../../../../core/supabase_service.dart';
 
@@ -137,6 +139,14 @@ class ChatDataSource {
       ]);
       
       print('Message sent successfully');
+      
+      // Send FCM notification directly
+      print('🔔 Attempting to send notification...');
+      try {
+        await _sendFcmNotification(message.senderId, message.receiverId, finalMessageText);
+      } catch (e) {
+        print('❌ Notification error: $e');
+      }
     } catch (e) {
       print('Detailed error: $e');
       print('Error type: ${e.runtimeType}');
@@ -227,5 +237,54 @@ Future<void> markMessagesAsRead(String chatUserId) async {
       .eq('receiver_id', myId)
       .eq('is_read', false);
 }
+
+  /// Send notification using HTTP call to FCM
+  Future<void> _sendFcmNotification(String senderId, String receiverId, String message) async {
+    try {
+      final supabase = _supabaseService.client;
+      
+      final receiver = await supabase
+          .from('user_profiles')
+          .select('fcm_token')
+          .eq('id', receiverId)
+          .single();
+      
+      final fcmToken = receiver['fcm_token'];
+      if (fcmToken == null) return;
+      
+      final sender = await supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', senderId)
+          .single();
+      
+      final senderName = sender['full_name'] ?? 'Someone';
+      
+      // Send via FCM
+      await http.post(
+        Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'key=${dotenv.env['FCM_SERVER_KEY'] ?? ''}',
+        },
+        body: jsonEncode({
+          'to': fcmToken,
+          'priority': 'high',
+          'notification': {
+            'title': senderName,
+            'body': message,
+            'sound': 'default',
+          },
+          'data': {
+            'sender_id': senderId,
+            'sender_name': senderName,
+            'message': message,
+          },
+        }),
+      );
+    } catch (e) {
+      print('Notification error: $e');
+    }
+  }
 
 }

@@ -17,14 +17,14 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('New Group', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('New Group', style: TextStyle(color: const Color(0xFF075E54))),
         actions: [
           TextButton(
             onPressed: _selectedContacts.isNotEmpty && _groupNameController.text.trim().isNotEmpty
                 ? _createGroup
                 : null,
-            child: Text('CREATE', style: TextStyle(color: AppTheme.primaryColor)),
+            child: Text('CREATE', style: TextStyle(color: const Color(0xFF075E54))),
           ),
         ],
       ),

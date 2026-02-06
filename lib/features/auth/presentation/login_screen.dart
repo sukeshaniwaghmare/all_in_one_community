@@ -192,12 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
               if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
                 await authProvider.login(_emailController.text, _passwordController.text);
                 
-                if (authProvider.isLoggedIn && authProvider.error == null) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CommunitySelectionScreen()),
-                  );
-                } else if (authProvider.error != null) {
+                if (authProvider.error != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(authProvider.error!)),
                   );

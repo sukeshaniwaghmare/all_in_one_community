@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class CreateChannelScreen extends StatefulWidget {
   const CreateChannelScreen({super.key});
@@ -17,14 +17,14 @@ class _CreateChannelScreenState extends State<CreateChannelScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('Create Channel', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('Create Channel', style: TextStyle(color: const Color(0xFF075E54))),
         actions: [
           TextButton(
             onPressed: _channelNameController.text.trim().isNotEmpty
                 ? _createChannel
                 : null,
-            child: Text('CREATE', style: TextStyle(color: AppTheme.primaryColor)),
+            child: Text('CREATE', style: TextStyle(color: const Color(0xFF075E54))),
           ),
         ],
       ),
@@ -50,7 +50,7 @@ class _CreateChannelScreenState extends State<CreateChannelScreen> {
                     right: 0,
                     child: Container(
                       decoration: const BoxDecoration(
-                        color: AppTheme.primaryColor,
+                        color: const Color(0xFF075E54),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.add, color: Colors.white, size: 24),

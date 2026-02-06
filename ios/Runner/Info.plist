@@ -47,5 +47,10 @@
 	<true/>
 	<key>NSContactsUsageDescription</key>
 	<string>This app needs access to contacts to show your contact list.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

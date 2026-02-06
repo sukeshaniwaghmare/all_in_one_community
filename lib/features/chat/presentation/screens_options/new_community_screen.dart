@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class NewCommunityScreen extends StatefulWidget {
   const NewCommunityScreen({super.key});
@@ -17,12 +17,12 @@ class _NewCommunityScreenState extends State<NewCommunityScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('New Community', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('New Community', style: TextStyle(color: const Color(0xFF075E54))),
         actions: [
           TextButton(
             onPressed: _communityNameController.text.isNotEmpty ? _createCommunity : null,
-            child: Text('CREATE', style: TextStyle(color: AppTheme.primaryColor)),
+            child: Text('CREATE', style: TextStyle(color: const Color(0xFF075E54))),
           ),
         ],
       ),
@@ -49,7 +49,7 @@ class _NewCommunityScreenState extends State<NewCommunityScreen> {
                     right: 0,
                     child: Container(
                       decoration: const BoxDecoration(
-                        color: AppTheme.primaryColor,
+                        color: const Color(0xFF075E54),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.add, color: Colors.white, size: 24),

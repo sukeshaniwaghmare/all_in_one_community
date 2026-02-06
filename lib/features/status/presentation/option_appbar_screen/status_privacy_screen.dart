@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class StatusPrivacyScreen extends StatefulWidget {
   const StatusPrivacyScreen({super.key});
@@ -16,8 +16,8 @@ class _StatusPrivacyScreenState extends State<StatusPrivacyScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('Status Privacy', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('Status Privacy', style: TextStyle(color: const Color(0xFF075E54))),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

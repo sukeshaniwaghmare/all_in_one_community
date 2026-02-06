@@ -1,69 +1,69 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class FCMService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   static final SupabaseClient _supabase = Supabase.instance.client;
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static int _badgeCount = 0;
+  static String? _currentChatUserId;
+
+  static void setCurrentChat(String? userId) {
+    _currentChatUserId = userId;
+  }
 
   static Future<void> initialize() async {
-    // Initialize local notifications
+    print('🔧 Initializing FCM Service...');
+    
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    const settings = InitializationSettings(android: androidSettings, iOS: iosSettings);
     
     await _notifications.initialize(
-      settings,
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
     
-    // Create notification channel
     const androidChannel = AndroidNotificationChannel(
       'chat_messages',
       'Chat Messages',
       description: 'Notifications for new chat messages',
       importance: Importance.high,
+      enableVibration: true,
+      playSound: true,
     );
     
     await _notifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(androidChannel);
     
-    // Request FCM permissions
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      
+      final token = await _messaging.getToken();
+      if (token != null) {
+        print('📱 FCM Token: ${token.substring(0, 20)}...');
+        await _storeFCMToken(token);
+      }
+      
+      _messaging.onTokenRefresh.listen(_storeFCMToken);
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    } catch (e) {
+      print('⚠️ FCM setup skipped: $e');
+    }
     
-    // Get and store FCM token
-    await _updateFCMToken();
-    
-    // Listen for token refresh
-    _messaging.onTokenRefresh.listen(_storeFCMToken);
-    
-    // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    
-    // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
-    
-    // Handle notification taps when app is in background
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-    
-    // Load initial badge count
     await _loadBadgeCount();
     
-    print('FCM Service initialized');
+    print('✅ FCM Service initialized');
   }
 
   static Future<void> _updateFCMToken() async {
@@ -73,123 +73,103 @@ class FCMService {
         await _storeFCMToken(token);
       }
     } catch (e) {
-      print('Error getting FCM token: $e');
+      print('❌ Error getting FCM token: $e');
     }
   }
 
   static Future<void> _storeFCMToken(String token) async {
     try {
+      print('💾 Storing FCM token: ${token.substring(0, 20)}...');
       final userId = _supabase.auth.currentUser?.id;
       if (userId != null) {
         await _supabase
             .from('user_profiles')
             .update({'fcm_token': token})
             .eq('id', userId);
-        print('FCM token stored: $token');
+        print('✅ FCM token stored for user: $userId');
+      } else {
+        print('❌ No user logged in');
       }
     } catch (e) {
-      print('Error storing FCM token: $e');
+      print('❌ Error storing FCM token: $e');
     }
   }
 
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('Foreground message received: ${message.data}');
+    print('📩 Foreground message received!');
+    print('   Title: ${message.notification?.title}');
+    print('   Body: ${message.notification?.body}');
+    print('   Data: ${message.data}');
     
     final data = message.data;
     final senderId = data['sender_id'];
     final senderName = data['sender_name'] ?? 'Someone';
     final messageText = data['message'] ?? 'New message';
     
-    // Don't show notification for own messages
-    if (senderId != _supabase.auth.currentUser?.id) {
-      await _showLocalNotification(
-        senderName,
-        messageText,
-        senderId,
-      );
-      await _incrementBadgeCount();
+    print('   Current chat user: $_currentChatUserId');
+    print('   Sender ID: $senderId');
+    
+    // Don't show if chat is open with this sender
+    if (_currentChatUserId == senderId) {
+      print('🚫 Chat open, skipping notification');
+      return;
     }
-  }
-
-  static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
-    print('Background message received: ${message.data}');
-    await _incrementBadgeCount();
+    
+    if (senderId != _supabase.auth.currentUser?.id) {
+      print('✅ Showing notification');
+      await _showLocalNotification(senderName, messageText, senderId);
+      await _incrementBadgeCount();
+    } else {
+      print('🚫 Own message, skipping');
+    }
   }
 
   static Future<void> _handleNotificationTap(RemoteMessage message) async {
-    print('Notification tapped: ${message.data}');
-    // Navigate to chat screen
+    print('📱 Notification tapped: ${message.data}');
   }
 
   static void _onNotificationTap(NotificationResponse response) {
-    print('Local notification tapped: ${response.payload}');
-    // Navigate to chat screen using the payload (sender_id)
+    print('📱 Local notification tapped: ${response.payload}');
   }
 
   static Future<void> _showLocalNotification(String title, String body, String senderId) async {
-    final androidDetails = AndroidNotificationDetails(
-      'chat_messages',
-      'Chat Messages',
-      channelDescription: 'Notifications for new chat messages',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      enableVibration: true,
-      playSound: true,
-      autoCancel: true,
-      category: AndroidNotificationCategory.message,
-      number: _badgeCount,
+    print('🔔 Showing local notification: $title - $body');
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'chat_messages',
+          'Chat Messages',
+          channelDescription: 'Notifications for new chat messages',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: true,
+          enableVibration: true,
+          playSound: true,
+          number: _badgeCount,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          badgeNumber: _badgeCount,
+        ),
+      ),
+      payload: senderId,
     );
-    
-    final iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      badgeNumber: _badgeCount,
-      interruptionLevel: InterruptionLevel.active,
-    );
-    
-    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-    
-    try {
-      await _notifications.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        title,
-        body,
-        details,
-        payload: senderId,
-      );
-    } catch (e) {
-      print('Error showing notification: $e');
-    }
+    print('✅ Notification shown');
   }
 
   static Future<void> _incrementBadgeCount() async {
     _badgeCount++;
     await _saveBadgeCount();
-    await _updateAppBadge();
   }
 
   static Future<void> clearBadgeCount() async {
     _badgeCount = 0;
     await _saveBadgeCount();
-    await _updateAppBadge();
-  }
-
-  static Future<void> _updateAppBadge() async {
-    try {
-      await _notifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(
-            AndroidNotificationChannel(
-              'badge_update',
-              'Badge Update',
-              importance: Importance.low,
-            ),
-          );
-    } catch (e) {
-      print('Error updating app badge: $e');
-    }
   }
 
   static Future<void> _saveBadgeCount() async {
@@ -202,28 +182,15 @@ class FCMService {
     _badgeCount = prefs.getInt('badge_count') ?? 0;
   }
 
-  static Future<void> updateOnlineStatus(bool isOnline) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId != null) {
-        await _supabase
-            .from('user_profiles')
-            .update({
-              'is_online': isOnline,
-              'last_seen': DateTime.now().toIso8601String(),
-            })
-            .eq('id', userId);
-      }
-    } catch (e) {
-      print('Error updating online status: $e');
-    }
-  }
-
   static int get badgeCount => _badgeCount;
-}
 
-// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> _handleBackgroundMessage(RemoteMessage message) async {
-  print('Background message: ${message.data}');
+  static Future<void> showNotification(String title, String body, String senderId) async {
+    if (_currentChatUserId == senderId) {
+      print('🚫 Chat open, skipping notification');
+      return;
+    }
+    
+    await _showLocalNotification(title, body, senderId);
+    await _incrementBadgeCount();
+  }
 }

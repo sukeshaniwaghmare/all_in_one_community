@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -9,8 +8,8 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('Settings', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: const IconThemeData(color: Color(0xFF075E54)),
+        title: const Text('Settings', style: TextStyle(color: Color(0xFF075E54))),
       ),
       body: ListView(
         children: [

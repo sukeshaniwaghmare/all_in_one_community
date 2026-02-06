@@ -1,5 +1,6 @@
 import 'package:all_in_one_community/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:all_in_one_community/features/notifications/services/notification_service.dart' as local_notifications;
+import 'package:all_in_one_community/features/notifications/services/services/fcm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +45,9 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _chatProvider = context.read<ChatProvider>();
+
+    // Set current chat to prevent notifications
+    FCMService.setCurrentChat(widget.chat.receiverUserId);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Load messages
@@ -385,6 +389,9 @@ class _ChatDetailScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Clear current chat when leaving
+    FCMService.setCurrentChat(null);
+    
     _refreshTimer?.cancel();
     _chatProvider.removeListener(_scrollToBottom);
     _messageController.dispose();

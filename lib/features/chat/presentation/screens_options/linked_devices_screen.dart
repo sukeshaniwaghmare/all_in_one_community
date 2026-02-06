@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class LinkedDevicesScreen extends StatelessWidget {
   const LinkedDevicesScreen({super.key});
@@ -9,8 +9,8 @@ class LinkedDevicesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('Linked Devices', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('Linked Devices', style: TextStyle(color: const Color(0xFF075E54))),
       ),
       body: Column(
         children: [
@@ -34,7 +34,7 @@ class LinkedDevicesScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () => _linkDevice(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: const Color(0xFF075E54),
                     minimumSize: const Size(double.infinity, 48),
                   ),
                   child: const Text('Link a Device'),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/theme/app_theme.dart';
+
 
 class FindChannelsScreen extends StatefulWidget {
   const FindChannelsScreen({super.key});
@@ -23,8 +23,8 @@ class _FindChannelsScreenState extends State<FindChannelsScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: AppTheme.primaryColor),
-        title: Text('Find Channels', style: TextStyle(color: AppTheme.primaryColor)),
+        iconTheme: IconThemeData(color: const Color(0xFF075E54)),
+        title: Text('Find Channels', style: TextStyle(color: const Color(0xFF075E54))),
       ),
       body: Column(
         children: [
@@ -47,7 +47,7 @@ class _FindChannelsScreenState extends State<FindChannelsScreen> {
                 final channel = _channels[index];
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: const Color(0xFF075E54),
                     child: Text(channel['name'][0]),
                   ),
                   title: Text(channel['name']),
