@@ -180,12 +180,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                       title: 'computer engineer 😎',
                       subtitle: 'Bio',
                     ),
-                    Divider(),
-                    _InfoItem(
-                      title: '@sukeshaniwaghmare',
-                      subtitle: 'Username',
-                      showQr: true,
-                    ),
                   ],
                 ),
               ),

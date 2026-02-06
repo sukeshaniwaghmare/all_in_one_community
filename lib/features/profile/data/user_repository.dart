@@ -12,7 +12,6 @@ class UserRepository {
       role: 'Admin',
       phone: '+91 9102251845',
       bio: 'software engineer 😎',
-      username: 'sukeshaniwaghmare',
     );
   }
 
@@ -30,7 +29,7 @@ class UserRepository {
       print('Fetching profile from database for user: $userId');
       
       final response = await SupabaseService.instance.client
-          .from('profiles')
+          .from('user_profiles')
           .select()
           .eq('id', userId)
           .single();
@@ -39,12 +38,11 @@ class UserRepository {
       
       _currentUser = User(
         id: response['id'],
-        name: response['name'] ?? '',
+        name: response['full_name'] ?? '',
         email: response['email'] ?? '',
         role: 'User',
         phone: response['phone'] ?? '',
         bio: response['bio'] ?? '',
-        username: response['username'] ?? '',
         profileImage: response['avatar_url'],
         isDarkMode: response['is_dark_mode'] ?? false,
         language: response['language'] ?? 'English',
@@ -82,11 +80,10 @@ class UserRepository {
       
       final userData = {
         'id': userId,
-        'name': user.name,
+        'full_name': user.name,
         'email': user.email,
         'phone': user.phone,
         'bio': user.bio,
-        'username': user.username,
         'avatar_url': user.profileImage,
         'is_dark_mode': user.isDarkMode,
         'language': user.language,
@@ -96,7 +93,7 @@ class UserRepository {
       
       // Try to update first, if not exists then insert
       final existing = await SupabaseService.instance.client
-          .from('profiles')
+          .from('user_profiles')
           .select('id')
           .eq('id', userId)
           .maybeSingle();
@@ -104,14 +101,14 @@ class UserRepository {
       if (existing != null) {
         print('Updating existing profile');
         await SupabaseService.instance.client
-            .from('profiles')
+            .from('user_profiles')
             .update(userData)
             .eq('id', userId);
         print('Profile updated successfully');
       } else {
         print('Inserting new profile');
         await SupabaseService.instance.client
-            .from('profiles')
+            .from('user_profiles')
             .insert(userData);
         print('Profile inserted successfully');
       }

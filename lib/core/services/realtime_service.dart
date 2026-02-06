@@ -23,6 +23,9 @@ class RealtimeService {
   Stream<Map<String, dynamic>> get chatStream => _chatStreamController.stream;
 
   void subscribeToMessages(String chatId) {
+    final currentUserId = _authService.currentUserId;
+    if (currentUserId == null) return;
+    
     _messagesChannel?.unsubscribe();
     
     _messagesChannel = _supabase
@@ -32,7 +35,16 @@ class RealtimeService {
           schema: 'public',
           table: 'messages',
           callback: (payload) {
-            _messageStreamController.add(payload.newRecord);
+            final data = payload.newRecord;
+            final senderId = data['sender_id'];
+            final receiverId = data['receiver_id'];
+            
+            // Only process messages between current user and chat partner
+            if ((senderId == currentUserId && receiverId == chatId) ||
+                (senderId == chatId && receiverId == currentUserId)) {
+              print('Realtime message received: $data');
+              _messageStreamController.add(data);
+            }
           },
         )
         .subscribe();

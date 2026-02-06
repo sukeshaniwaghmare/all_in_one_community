@@ -50,7 +50,6 @@ class ProfileProvider extends ChangeNotifier {
     String? name,
     String? email,
     String? bio,
-    String? username,
   }) async {
     // Check if user is authenticated
     final currentUser = SupabaseService.instance.currentUser;
@@ -63,7 +62,7 @@ class ProfileProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    print('Updating profile: name=$name, email=$email, bio=$bio, username=$username');
+    print('Updating profile: name=$name, email=$email, bio=$bio');
     print('Authenticated user ID: ${currentUser.id}');
 
     final updatedUser = _user.copyWith(
@@ -71,7 +70,6 @@ class ProfileProvider extends ChangeNotifier {
       name: name ?? _user.name,
       email: email ?? _user.email ?? currentUser.email,
       bio: bio ?? _user.bio,
-      username: username ?? _user.username,
     );
 
     print('Updated user object created: ${updatedUser.name}');
@@ -122,7 +120,6 @@ class ProfileProvider extends ChangeNotifier {
       role: 'User',
       phone: '',
       bio: '',
-      username: '',
     );
     
     await UserRepository.updateUser(initialUser);

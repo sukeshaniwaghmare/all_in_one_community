@@ -77,6 +77,7 @@ class ChatProvider extends ChangeNotifier {
 
       final newMessages = await getMessagesUseCase(receiverUserId);
       _messages = newMessages;
+      print('Loaded ${_messages.length} messages for receiver: $receiverUserId');
 
       _subscribeToMessages(receiverUserId);
     } catch (e) {
@@ -85,6 +86,12 @@ class ChatProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Manual refresh for receiver - DISABLED
+  Future<void> refreshMessages() async {
+    // Disabled to prevent constant reloading
+    return;
   }
 
   bool _isValidUUID(String uuid) {
@@ -132,6 +139,7 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       await sendMessageUseCase(message);
+      print('Message sent successfully');
     } catch (e) {
       debugPrint('Error sending message: $e');
     }
@@ -219,6 +227,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _handleNewMessage(Map<String, dynamic> data) {
     final currentUserId = _authService.currentUserId;
+    print('Handling new realtime message: $data');
 
     final message = ChatMessage(
       id: data['id'].toString(),
@@ -227,14 +236,35 @@ class ChatProvider extends ChangeNotifier {
       receiverId: data['receiver_id'],
       senderName: 'User',
       timestamp: DateTime.parse(data['created_at']),
+      type: _getMessageTypeFromString(data['message_type']),
+      mediaUrl: data['media_url'], // This will now contain the Supabase Storage URL
       isMe: data['sender_id'] == currentUserId,
     );
 
     // avoid duplicates
-    if (_messages.any((m) => m.id == message.id)) return;
+    if (_messages.any((m) => m.id == message.id)) {
+      print('Duplicate message ignored: ${message.id}');
+      return;
+    }
 
+    print('Adding new message to list: ${message.text}');
     _messages.add(message);
     notifyListeners();
+  }
+
+  MessageType _getMessageTypeFromString(String? type) {
+    switch (type) {
+      case 'image':
+        return MessageType.image;
+      case 'audio':
+        return MessageType.audio;
+      case 'video':
+        return MessageType.video;
+      case 'file':
+        return MessageType.file;
+      default:
+        return MessageType.text;
+    }
   }
 
   void _handleChatUpdate(Map<String, dynamic> data) {

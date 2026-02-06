@@ -13,7 +13,6 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _bioController;
-  late TextEditingController _usernameController;
 
   @override
   void initState() {
@@ -21,14 +20,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<ProfileProvider>().user;
     _nameController = TextEditingController(text: user.name);
     _bioController = TextEditingController(text: user.bio ?? '');
-    _usernameController = TextEditingController(text: user.username ?? '');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
-    _usernameController.dispose();
     super.dispose();
   }
 
@@ -71,18 +68,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             footer:
                 'You can add a few lines about yourself. Choose who can see your bio in Settings.',
-          ),
-
-          _divider(),
-
-          _section(
-            title: 'Username',
-            child: _editableRow(
-              controller: _usernameController,
-              hint: 'Enter username',
-              prefix: '@',
-            ),
-            footer: 'You can choose a username. If you do, people will be able to find you by this username.',
           ),
 
           _divider(),
@@ -198,7 +183,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     context.read<ProfileProvider>().updateProfile(
           name: _nameController.text,
           bio: _bioController.text,
-          username: _usernameController.text,
         );
   }
 }

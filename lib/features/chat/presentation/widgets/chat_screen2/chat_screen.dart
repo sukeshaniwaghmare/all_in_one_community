@@ -1,10 +1,20 @@
 import 'package:all_in_one_community/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:all_in_one_community/features/notifications/services/notification_service.dart' as local_notifications;
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
+import 'dart:io';
 import '../../../data/models/chat_model.dart';
 import '../../../provider/chat_provider.dart';
+import '../../../../../core/services/storage_service.dart';
+
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
+  }
+}
 
 class ChatScreen extends StatefulWidget {
   final Chat chat;
@@ -21,6 +31,8 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   final ImagePicker _picker = ImagePicker();
   late ChatProvider _chatProvider;
   bool _showAttachmentOptions = false;
+  Timer? _refreshTimer;
+  
   @override
   void initState() {
     super.initState();
@@ -41,6 +53,8 @@ class _ChatDetailScreenState extends State<ChatScreen> {
 
       // Clear notification badge
       local_notifications.NotificationService.clearBadge();
+      
+      // Rely on realtime subscriptions only - no periodic refresh
     });
   }
 
@@ -213,6 +227,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _chatProvider.removeListener(_scrollToBottom);
     _messageController.dispose();
     _scrollController.dispose();
@@ -277,19 +292,55 @@ class _ChatDetailScreenState extends State<ChatScreen> {
           _showAttachmentOptions = false;
         });
 
-        print('Selected $type: ${file.path}');
-        
-        // Send media message with file path
+        // Show loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text('Uploading ${type}...'),
+              ],
+            ),
+            duration: Duration(seconds: 10), // Will be dismissed when upload completes
+          ),
+        );
+
+        // Send media message with file path (will be uploaded to Supabase Storage)
         final mediaMessage = type == 'video' 
             ? 'VIDEO:${file.path}' 
             : 'IMAGE:${file.path}';
-        context.read<ChatProvider>().sendMessage(
+        
+        await context.read<ChatProvider>().sendMessage(
           mediaMessage,
           widget.chat.receiverUserId,
+        );
+
+        // Hide loading indicator
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${type.capitalize()} sent successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
       }
     } catch (e) {
       print('Error picking media: $e');
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error uploading ${type}: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

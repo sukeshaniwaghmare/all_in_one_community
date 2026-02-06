@@ -30,12 +30,18 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json, String currentUserId) {
+    // Extract sender full_name from nested object
+    String senderName = 'Unknown User';
+    if (json['sender'] != null && json['sender']['full_name'] != null) {
+      senderName = json['sender']['full_name'];
+    }
+    
     return ChatMessage(
       id: json['id'].toString(),
       text: json['content'] ?? json['message'] ?? '',
       senderId: json['sender_id'] ?? '',
       receiverId: json['receiver_id'] ?? '',
-      senderName: json['sender_name'] ?? 'Unknown',
+      senderName: senderName,
       timestamp: DateTime.parse(json['created_at']),
       type: _getMessageType(json['message_type']),
       isMe: json['sender_id'] == currentUserId,
@@ -78,6 +84,8 @@ class Chat {
   final String? username;
   final bool isGroup;
   final String receiverUserId;
+  final bool isOnline;
+  final DateTime? lastSeen;
 
   Chat({
     required this.id,
@@ -92,12 +100,16 @@ class Chat {
     this.username,
     this.isGroup = false,
     required this.receiverUserId,
+    this.isOnline = false,
+    this.lastSeen,
   });
 
   Chat copyWith({
     String? lastMessage,
     DateTime? lastMessageTime,
     int? unreadCount,
+    bool? isOnline,
+    DateTime? lastSeen,
   }) {
     return Chat(
       id: id,
@@ -112,18 +124,20 @@ class Chat {
       username: username,
       isGroup: isGroup,
       receiverUserId: receiverUserId,
+      isOnline: isOnline ?? this.isOnline,
+      lastSeen: lastSeen ?? this.lastSeen,
     );
   }
 
   factory Chat.fromUserProfile(Map<String, dynamic> json) {
     final userId = json['id'];
-    final username = json['username'];
-    print('Creating chat - ID: $userId, Username: $username');
+    final fullName = json['full_name'];
+    print('Creating chat - ID: $userId, Full Name: $fullName');
     
     // Ensure we use the actual UUID ID, not username
     return Chat(
       id: userId.toString(), // This should be UUID
-      name: json['full_name'] ?? json['username'] ?? 'Unknown User',
+      name: json['full_name'] ?? 'Unknown User',
       lastMessage: 'Tap to start conversation',
       lastMessageTime: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
       unreadCount: 0,
@@ -134,6 +148,30 @@ class Chat {
       username: json['username'],
       isGroup: false,
       receiverUserId: userId.toString(),
+      isOnline: json['is_online'] ?? false,
+      lastSeen: json['last_seen'] != null ? DateTime.parse(json['last_seen']) : null,
     );
+  }
+
+  String getOnlineStatus() {
+    if (isOnline) {
+      return 'Online';
+    } else if (lastSeen != null) {
+      final now = DateTime.now();
+      final difference = now.difference(lastSeen!);
+      
+      if (difference.inMinutes < 1) {
+        return 'Last seen just now';
+      } else if (difference.inHours < 1) {
+        return 'Last seen ${difference.inMinutes}m ago';
+      } else if (difference.inDays < 1) {
+        return 'Last seen ${difference.inHours}h ago';
+      } else if (difference.inDays < 7) {
+        return 'Last seen ${difference.inDays}d ago';
+      } else {
+        return 'Last seen long ago';
+      }
+    }
+    return 'Last seen recently';
   }
 }

@@ -1,6 +1,7 @@
+import 'package:all_in_one_community/features/notifications/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'features/auth/presentation/login_screen.dart';
-import 'services/fcm_service.dart';
+import 'features/notifications/services/services/fcm_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/notifications/services/notification_service.dart' as local_notifications;
@@ -23,7 +24,7 @@ import 'core/supabase_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.initialize();
-  await local_notifications.NotificationService.initialize();
+  await NotificationService.initialize();
   runApp(const CommunityApp());
 }
 

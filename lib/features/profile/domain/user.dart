@@ -7,7 +7,6 @@ class User {
   final String? profileImage;
   final String? phone;
   final String? bio;
-  final String? username;
   final bool isDarkMode;
   final String language;
 
@@ -20,7 +19,6 @@ class User {
     this.profileImage,
     this.phone,
     this.bio,
-    this.username,
     this.isDarkMode = false,
     this.language = 'English',
   });
@@ -34,7 +32,6 @@ class User {
     String? profileImage,
     String? phone,
     String? bio,
-    String? username,
     bool? isDarkMode,
     String? language,
   }) {
@@ -47,7 +44,6 @@ class User {
       profileImage: profileImage ?? this.profileImage,
       phone: phone ?? this.phone,
       bio: bio ?? this.bio,
-      username: username ?? this.username,
       isDarkMode: isDarkMode ?? this.isDarkMode,
       language: language ?? this.language,
     );

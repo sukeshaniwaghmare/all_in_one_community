@@ -20,7 +20,12 @@ SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-### Step 3: Enable Authentication
+### Step 3: Setup Storage for Chat Media
+1. In Supabase dashboard, go to Storage
+2. Run the SQL script from `supabase/storage_setup.sql` in the SQL Editor
+3. This creates a public bucket called 'chat-media' for images and videos
+
+### Step 4: Enable Authentication
 1. In Supabase dashboard, go to Authentication > Settings
 2. Enable Email authentication
 3. Configure any additional auth providers if needed
