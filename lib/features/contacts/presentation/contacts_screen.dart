@@ -5,7 +5,7 @@ import '../models/contact_model.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ContactsScreen extends StatefulWidget {
-  const ContactsScreen({Key? key}) : super(key: key);
+  const ContactsScreen({super.key});
 
   @override
   State<ContactsScreen> createState() => _ContactsScreenState();

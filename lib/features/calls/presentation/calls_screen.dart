@@ -697,7 +697,7 @@ class _ScheduleCallWidgetState extends State<ScheduleCallWidget> {
               trailing: Switch(
                 value: _isVideoCall,
                 onChanged: (value) => setState(() => _isVideoCall = value),
-                activeColor: AppTheme.primaryColor,
+                activeThumbColor: AppTheme.primaryColor,
               ),
             ),
             

@@ -19,7 +19,7 @@ extension StringExtension on String {
 class ChatScreen extends StatefulWidget {
   final Chat chat;
 
-  const ChatScreen({Key? key, required this.chat}) : super(key: key);
+  const ChatScreen({super.key, required this.chat});
 
   @override
   State<ChatScreen> createState() => _ChatDetailScreenState();
@@ -303,7 +303,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 12),
-                Text('Uploading ${type}...'),
+                Text('Uploading $type...'),
               ],
             ),
             duration: Duration(seconds: 10), // Will be dismissed when upload completes
@@ -337,7 +337,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error uploading ${type}: $e'),
+          content: Text('Error uploading $type: $e'),
           backgroundColor: Colors.red,
         ),
       );

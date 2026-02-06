@@ -19,14 +19,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get sender info
     const { data: sender } = await supabase
       .from('users')
       .select('name')
       .eq('id', sender_id)
       .single()
 
-    // Get chat participants (excluding sender)
     const { data: participants } = await supabase
       .from('chat_participants')
       .select('user_id, users!inner(fcm_token)')
@@ -34,10 +32,9 @@ serve(async (req) => {
       .neq('user_id', sender_id)
 
     if (!participants?.length) {
-      return new Response('No recipients found', { status: 200, headers: corsHeaders })
+      return new Response('No recipients', { status: 200, headers: corsHeaders })
     }
 
-    // Send FCM notifications
     const fcmKey = Deno.env.get('FCM_SERVER_KEY')
     const notifications = participants
       .filter(p => p.users.fcm_token)
@@ -69,10 +66,7 @@ serve(async (req) => {
 
     await Promise.all(notifications)
 
-    return new Response('Notifications sent', { 
-      status: 200, 
-      headers: corsHeaders 
-    })
+    return new Response('Sent', { status: 200, headers: corsHeaders })
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {

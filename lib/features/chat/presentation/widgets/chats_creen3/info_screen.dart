@@ -6,7 +6,6 @@ import '../../../provider/chat_provider.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/widgets/apptopbar.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:io';
 import '../chat_screen2/option_screen/media_screen.dart';
 import '../../../../notifications/presentation/notification_screen.dart';

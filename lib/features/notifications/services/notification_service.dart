@@ -6,9 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   static int _badgeCount = 0;
+  static Function(String)? onChatTap;
   
   static Future<void> initialize() async {
-    // Initialize local notifications
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestBadgePermission: true,
@@ -23,49 +23,14 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
     
-    // Load saved badge count
     await _loadBadgeCount();
-    
-    // Start listening to real-time messages
-    _listenToMessages();
-  }
-
-  static void _listenToMessages() {
-    Supabase.instance.client
-        .channel('messages')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          callback: (payload) async {
-            final message = payload.newRecord;
-            final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-            
-            // Only show notification if message is for current user
-            if (message['receiver_id'] == currentUserId) {
-              // Get sender name from user_profiles
-              final senderResponse = await Supabase.instance.client
-                  .from('user_profiles')
-                  .select('full_name')
-                  .eq('id', message['sender_id'])
-                  .single();
-              
-              final senderName = senderResponse['full_name'] ?? 'Unknown';
-              
-              await showChatNotification(
-                senderName: senderName,
-                message: message['message'] ?? '',
-                chatId: message['sender_id'],
-              );
-            }
-          },
-        )
-        .subscribe();
   }
 
   static void _onNotificationTap(NotificationResponse response) {
-    print('Notification tapped: ${response.payload}');
-    // Clear badge when notification is tapped
+    if (response.payload != null && response.payload!.startsWith('chat_')) {
+      final chatId = response.payload!.replaceFirst('chat_', '');
+      onChatTap?.call(chatId);
+    }
     clearBadge();
   }
 
@@ -130,7 +95,6 @@ class NotificationService {
     required String message,
     required String chatId,
   }) async {
-    // Increment badge count
     await incrementBadge();
     
     await _showLocalNotification(

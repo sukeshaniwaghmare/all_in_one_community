@@ -1,3 +1,4 @@
+import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen1/chat_list_screen.dart';
 import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,7 @@ import '../../contacts/presentation/contacts_screen.dart';
 import '../../chat/presentation/screens_options/settings_screen.dart';
 import '../../chat/presentation/archived_chats_screen.dart';
 import 'package:image_picker/image_picker.dart';
-import 'new_list_screen.dart';
+
 import '../../chat/presentation/screens_options/new_group_screen.dart';
 import '../../chat/presentation/screens_options/new_community_screen.dart';
 import '../../chat/presentation/screens_options/broadcast_list_screen.dart';
@@ -294,7 +295,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       //  BOTTOM TAB BAR
       bottomNavigationBar: Material(
         elevation: 9,
-        child: Container(
+        child: SizedBox(
           height: 55,
           child: TabBar(
             controller: _tabController,
@@ -418,9 +419,9 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: GestureDetector(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const NewListScreen()),
+          // Add new list functionality
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('New list feature coming soon')),
           );
         },
         child: Container(
