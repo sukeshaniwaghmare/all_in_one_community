@@ -1,3 +1,4 @@
+import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import 'package:all_in_one_community/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:all_in_one_community/features/notifications/services/notification_service.dart' as local_notifications;
 import 'package:all_in_one_community/features/notifications/services/services/fcm_service.dart';
@@ -15,13 +16,16 @@ import 'option_screen/media_screen.dart';
 import 'option_screen/disappearing_messages_screen.dart';
 import 'option_screen/chat_theme_screen.dart';
 import '../chats_creen3/info_screen.dart';
+import 'image_picker_screen.dart';
 
+// ==================== UTILITY EXTENSION ====================
 extension StringExtension on String {
   String capitalize() {
     return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }
 
+// ==================== CHAT SCREEN WIDGET ====================
 class ChatScreen extends StatefulWidget {
   final Chat chat;
 
@@ -32,6 +36,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatScreen> {
+  // ==================== STATE VARIABLES ====================
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -41,43 +46,44 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   bool _isSearching = false;
   Timer? _refreshTimer;
   
+  // ==================== LIFECYCLE: INIT ====================
   @override
   void initState() {
     super.initState();
     _chatProvider = context.read<ChatProvider>();
 
-    // Set current chat to prevent notifications
+    // LOGIC: Set current chat to prevent notifications
     FCMService.setCurrentChat(widget.chat.receiverUserId);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Load messages
+      // LOGIC: Load messages from database
       await _chatProvider.loadMessages(widget.chat.receiverUserId);
 
-      // Mark delivered (receiver side)
-      await _chatProvider
-          .markMessagesAsDelivered(widget.chat.receiverUserId);
+      // LOGIC: Mark messages as delivered
+      await _chatProvider.markMessagesAsDelivered(widget.chat.receiverUserId);
 
-      // Mark read when chat opened
+      // LOGIC: Mark messages as read
       await _chatProvider.markMessagesAsRead(widget.chat.receiverUserId);
 
+      // LOGIC: Listen for new messages and auto-scroll
       _chatProvider.addListener(_scrollToBottom);
 
-      // Clear notification badge
+      // LOGIC: Clear notification badge
       local_notifications.NotificationService.clearBadge();
-      
-      // Rely on realtime subscriptions only - no periodic refresh
     });
   }
 
-  
-
+  // ==================== UI: BUILD METHOD ====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // UI: Resize when keyboard opens
+      // ==================== UI: APP BAR ====================
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         titleSpacing: 0,
+        // UI: Back button
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
           onPressed: () {
@@ -91,6 +97,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
             }
           },
         ),
+        // UI: Title (Search bar or Chat name)
         title: _isSearching
             ? TextField(
                 controller: _searchController,
@@ -100,11 +107,12 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
-                  // Search logic here
+                  // LOGIC: Search messages (to be implemented)
                 },
               )
             : GestureDetector(
                 onTap: () {
+                  // LOGIC: Navigate to info screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -116,6 +124,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                     ),
                   );
                 },
+                // UI: Chat name and avatar
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -148,12 +157,14 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   ],
                 ),
               ),
+        // UI: Menu options
         actions: _isSearching
             ? null
             : [
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
             onSelected: (value) {
+              // LOGIC: Handle menu selection
               if (value == 'search') {
                 setState(() {
                   _isSearching = true;
@@ -228,15 +239,19 @@ class _ChatDetailScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+      // ==================== UI: BODY ====================
       body: Column(
         children: [
+          // UI: Messages list
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (context, chatProvider, child) {
+                // UI: Loading state
                 if (chatProvider.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                // UI: Empty state
                 if (chatProvider.messages.isEmpty) {
                   return const Center(
                     child: Text(
@@ -247,6 +262,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   );
                 }
 
+                // UI: Messages list
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
@@ -260,9 +276,11 @@ class _ChatDetailScreenState extends State<ChatScreen> {
               },
             ),
           ),
+          // ==================== UI: INPUT AREA ====================
           SafeArea(
             child: Column(
               children: [
+                // UI: Attachment options (Camera, Gallery, Video)
                 if (_showAttachmentOptions)
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -296,6 +314,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
+                // UI: Message input bar
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -311,6 +330,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   ),
                   child: Row(
                     children: [
+                      // UI: Attachment button
                       IconButton(
                         onPressed: () {
                           setState(() {
@@ -324,12 +344,12 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                           color: Colors.grey[600],
                         ),
                       ),
+                      // UI: Text input field
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(25),
-                            border:
-                                Border.all(color: Colors.grey.shade300),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
                           child: TextField(
                             controller: _messageController,
@@ -348,28 +368,21 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      // UI: Send button
                       Container(
-                        decoration: const BoxDecoration(
-                          //color: Colors.blue,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor,
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
                           onPressed: () {
-                            if (_messageController.text
-                                .trim()
-                                .isNotEmpty) {
-                              final message =
-                                  _messageController.text.trim();
-
-                              print(
-                                  'Sending message: $message to ${widget.chat.receiverUserId}');
-
+                            // LOGIC: Send message
+                            if (_messageController.text.trim().isNotEmpty) {
+                              final message = _messageController.text.trim();
                               context.read<ChatProvider>().sendMessage(
-                                    message,
-                                    widget.chat
-                                        .receiverUserId, // ✅ UUID
-                                  );
-
+                                message,
+                                widget.chat.receiverUserId,
+                              );
                               _messageController.clear();
                             }
                           },
@@ -387,9 +400,10 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     );
   }
 
+  // ==================== LIFECYCLE: DISPOSE ====================
   @override
   void dispose() {
-    // Clear current chat when leaving
+    // LOGIC: Clear current chat
     FCMService.setCurrentChat(null);
     
     _refreshTimer?.cancel();
@@ -400,6 +414,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  // ==================== LOGIC: AUTO SCROLL ====================
   void _scrollToBottom() {
     if (_scrollController.hasClients &&
         _scrollController.position.hasContentDimensions) {
@@ -415,6 +430,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     }
   }
 
+  // ==================== UI: ATTACHMENT OPTION WIDGET ====================
   Widget _buildAttachmentOption({
     required IconData icon,
     required String label,
@@ -444,62 +460,66 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     );
   }
 
+  // ==================== LOGIC: PICK MEDIA (IMAGE/VIDEO) ====================
   Future<void> _pickMedia(ImageSource source, String type) async {
     try {
-      final XFile? file;
       if (type == 'video') {
-        file = await _picker.pickVideo(source: source);
+        // LOGIC: Pick single video
+        final file = await _picker.pickVideo(source: source);
+        if (file != null) {
+          setState(() => _showAttachmentOptions = false);
+          await _sendSingleMedia(file.path, 'video');
+        }
       } else {
-        file = await _picker.pickImage(source: source);
-      }
-
-      if (file != null) {
-        setState(() {
-          _showAttachmentOptions = false;
-        });
-
-        // Show loading indicator
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Text('Uploading $type...'),
-              ],
+        // LOGIC: Open image picker screen for multiple selection
+        setState(() => _showAttachmentOptions = false);
+        
+        final selectedImages = await Navigator.push<List<XFile>>(
+          context,
+          MaterialPageRoute(builder: (_) => ImagePickerScreen()),
+        );
+        
+        if (selectedImages != null && selectedImages.isNotEmpty) {
+          // UI: Show upload progress
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(width: 12),
+                  Text('Uploading ${selectedImages.length} image(s)...'),
+                ],
+              ),
+              duration: Duration(seconds: 30),
             ),
-            duration: Duration(seconds: 10), // Will be dismissed when upload completes
-          ),
-        );
+          );
 
-        // Send media message with file path (will be uploaded to Supabase Storage)
-        final mediaMessage = type == 'video' 
-            ? 'VIDEO:${file.path}' 
-            : 'IMAGE:${file.path}';
-        
-        await context.read<ChatProvider>().sendMessage(
-          mediaMessage,
-          widget.chat.receiverUserId,
-        );
+          if (selectedImages.length == 1) {
+            // LOGIC: Send single image
+            await _sendSingleMedia(selectedImages[0].path, 'image');
+          } else {
+            // LOGIC: Send multiple images as grouped message
+            final imagePaths = selectedImages.map((f) => f.path).join('|||');
+            
+            await context.read<ChatProvider>().sendMessage(
+              'IMAGES:$imagePaths',
+              widget.chat.receiverUserId,
+            );
 
-        // Hide loading indicator
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${type.capitalize()} sent successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+            // UI: Show success message
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${selectedImages.length} images sent!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
-      print('Error picking media: $e');
+      // UI: Show error message
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -510,6 +530,38 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     }
   }
 
+  // ==================== LOGIC: SEND SINGLE MEDIA ====================
+  Future<void> _sendSingleMedia(String path, String type) async {
+    // UI: Show upload progress
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 12),
+            Text('Uploading $type...'),
+          ],
+        ),
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    // LOGIC: Send media message
+    final mediaMessage = type == 'video' ? 'VIDEO:$path' : 'IMAGE:$path';
+    await context.read<ChatProvider>().sendMessage(mediaMessage, widget.chat.receiverUserId);
+
+    // UI: Show success message
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${type.capitalize()} sent successfully!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // ==================== UI: MORE OPTIONS MENU ====================
   void _showMoreOptions(BuildContext context) {
     showMenu(
       context: context,
@@ -557,6 +609,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
         ),
       ],
     ).then((value) {
+      // LOGIC: Handle menu selection
       if (value == 'clear') {
         _showClearChatDialog();
       } else if (value == 'export') {
@@ -569,6 +622,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     });
   }
 
+  // ==================== UI: CLEAR CHAT DIALOG ====================
   void _showClearChatDialog() {
     showDialog(
       context: context,
@@ -594,18 +648,21 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     );
   }
 
+  // ==================== LOGIC: EXPORT CHAT ====================
   void _exportChat() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Exporting chat...')),
     );
   }
 
+  // ==================== LOGIC: ADD SHORTCUT ====================
   void _addShortcut() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Shortcut added to home screen')),
     );
   }
 
+  // ==================== LOGIC: ADD TO LIST ====================
   void _addToList() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Added to list')),

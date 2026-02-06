@@ -17,7 +17,7 @@ import 'features/chat/domain/usecases/send_message_usecase.dart';
 import 'features/announcements/provider/announcements_provider.dart';
 import 'features/profile/provider/profile_provider.dart';
 import 'features/auth/provider/auth_provider.dart';
-import 'features/cart/provider/cart_provider.dart';
+
 import 'features/calls/provider/call_provider.dart';
 import 'features/contacts/provider/contact_provider.dart';
 import 'core/supabase_service.dart';
@@ -60,7 +60,6 @@ class CommunityApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => CallProvider()),
         ChangeNotifierProvider(create: (context) => AnnouncementsProvider()),
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
-        ChangeNotifierProvider(create: (context) => CartProvider()),
         ChangeNotifierProvider(create: (context) => ContactProvider()),
       ],
       child: Consumer<ThemeProvider>(

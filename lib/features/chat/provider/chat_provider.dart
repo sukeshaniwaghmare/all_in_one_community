@@ -50,7 +50,6 @@ class ChatProvider extends ChangeNotifier {
       _chats = await getChatsUseCase();
       _sortChatsByRecent();
     } catch (e) {
-      debugPrint('Error loading chats: $e');
       _chats = [];
     } finally {
       _isLoading = false;
@@ -68,7 +67,6 @@ class ChatProvider extends ChangeNotifier {
     try {
       // Check if receiverUserId is a valid UUID format
       if (!_isValidUUID(receiverUserId)) {
-        print('Invalid UUID format: $receiverUserId. Skipping database call.');
         _messages = [];
         return;
       }
@@ -80,11 +78,10 @@ class ChatProvider extends ChangeNotifier {
 
       final newMessages = await getMessagesUseCase(receiverUserId);
       _messages = newMessages;
-      print('Loaded ${_messages.length} messages for receiver: $receiverUserId');
 
       _subscribeToMessages(receiverUserId);
     } catch (e) {
-      debugPrint('Error loading messages: $e');
+     
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -116,34 +113,30 @@ class ChatProvider extends ChangeNotifier {
     final currentUserId = _authService.currentUserId;
 
     if (currentUserId == null) {
-      debugPrint('No authenticated user');
       return;
     }
 
-    // Check if receiverUserId is a valid UUID format
     if (!_isValidUUID(receiverUserId)) {
-      print('Invalid UUID format: $receiverUserId. Skipping database call.');
       return;
     }
 
     final message = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
-      senderId: currentUserId,     // ✅ UUID
-      receiverId: receiverUserId,  // ✅ UUID
+      senderId: currentUserId,
+      receiverId: receiverUserId,
       senderName: 'Me',
       timestamp: DateTime.now(),
       isMe: true,
     );
 
-    // optimistic UI
     _messages.add(message);
     
     // Update chat list
     final chatIndex = _chats.indexWhere((chat) => chat.receiverUserId == receiverUserId);
     if (chatIndex != -1) {
       _chats[chatIndex] = _chats[chatIndex].copyWith(
-        lastMessage: text,
+        lastMessage: text.startsWith('IMAGES:') ? '${text.split('|||').length} Images' : text,
         lastMessageTime: DateTime.now(),
       );
       _sortChatsByRecent();
@@ -153,9 +146,7 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       await sendMessageUseCase(message);
-      print('Message sent successfully');
     } catch (e) {
-      debugPrint('Error sending message: $e');
     }
   }
 
@@ -213,7 +204,6 @@ class ChatProvider extends ChangeNotifier {
     try {
       await _chatDataSource.markMessagesAsDelivered(receiverUserId);
     } catch (e) {
-      debugPrint('Error marking messages as delivered: $e');
     }
   }
 
@@ -221,7 +211,6 @@ class ChatProvider extends ChangeNotifier {
     try {
       await _chatDataSource.markMessagesAsRead(receiverUserId);
     } catch (e) {
-      debugPrint('Error marking messages as read: $e');
     }
   }
 
@@ -257,7 +246,6 @@ class ChatProvider extends ChangeNotifier {
 
     // avoid duplicates
     if (_messages.any((m) => m.id == message.id)) {
-      print('Duplicate message ignored: ${message.id}');
       return;
     }
 

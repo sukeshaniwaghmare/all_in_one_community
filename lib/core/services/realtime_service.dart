@@ -42,7 +42,7 @@ class RealtimeService {
             // Only process messages between current user and chat partner
             if ((senderId == currentUserId && receiverId == chatId) ||
                 (senderId == chatId && receiverId == currentUserId)) {
-              print('Realtime message received: $data');
+             
               _messageStreamController.add(data);
             }
           },

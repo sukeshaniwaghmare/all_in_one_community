@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../../data/models/chat_model.dart';
 import 'video_player_screen.dart';
+import 'image_gallery_screen.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -38,6 +39,18 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildMessageContent(BuildContext context) {
+    // Handle multiple images from text (local sending)
+    if (message.text.startsWith('IMAGES:')) {
+      final imagePaths = message.text.substring(7).split('|||');
+      return _buildImageGrid(context, imagePaths);
+    }
+
+    // Handle multiple images from mediaUrl (from database)
+    if (message.type == MessageType.image && message.mediaUrl != null && message.mediaUrl!.contains('|||')) {
+      final imageUrls = message.mediaUrl!.split('|||');
+      return _buildImageGrid(context, imageUrls);
+    }
+
     // Handle image messages
     if (message.type == MessageType.image && message.mediaUrl != null) {
       final mediaData = message.mediaUrl!;
@@ -224,6 +237,79 @@ class MessageBubble extends StatelessWidget {
       message.text,
       style: const TextStyle(
         color: Colors.black,
+      ),
+    );
+  }
+
+  Widget _buildImageGrid(BuildContext context, List<String> imagePaths) {
+    return SizedBox(
+      height: 200,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: imagePaths.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: EdgeInsets.only(right: index < imagePaths.length - 1 ? 4 : 0),
+            child: GestureDetector(
+              onTap: () => _openImageGallery(context, imagePaths, index),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _buildImageWidget(imagePaths[index], width: 150, height: 200),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildImageWidget(String imagePath, {double? width, double? height}) {
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey[200],
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey[300],
+            child: Icon(Icons.broken_image, color: Colors.grey),
+          );
+        },
+      );
+    } else if (imagePath.startsWith('/') && File(imagePath).existsSync()) {
+      return Image.file(
+        File(imagePath),
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    } else {
+      return Container(
+        width: width,
+        height: height,
+        color: Colors.grey[300],
+        child: Icon(Icons.image_not_supported, color: Colors.grey),
+      );
+    }
+  }
+
+  void _openImageGallery(BuildContext context, List<String> images, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImageGalleryScreen(images: images, initialIndex: initialIndex),
       ),
     );
   }

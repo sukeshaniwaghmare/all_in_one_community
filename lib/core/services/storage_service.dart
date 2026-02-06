@@ -24,10 +24,8 @@ class StorageService {
           .from('chat-files')
           .getPublicUrl(uploadPath);
 
-      print('File uploaded successfully: $publicUrl');
       return publicUrl;
     } catch (e) {
-      print('Upload error: $e');
       return null;
     }
   }

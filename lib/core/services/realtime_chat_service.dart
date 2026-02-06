@@ -87,7 +87,6 @@ class RealtimeChatService {
 
       _roomsController.add(rooms);
     } catch (e) {
-      print('Error loading rooms: $e');
     }
   }
 
@@ -135,7 +134,6 @@ class RealtimeChatService {
 
       return ChatRoom.fromJson(roomResponse);
     } catch (e) {
-      print('Error creating room: $e');
       return null;
     }
   }
@@ -164,7 +162,6 @@ class RealtimeChatService {
 
       return true;
     } catch (e) {
-      print('Error sending message: $e');
       return false;
     }
   }
@@ -188,7 +185,6 @@ class RealtimeChatService {
 
       _messagesController.add(messages);
     } catch (e) {
-      print('Error loading messages: $e');
     }
   }
 
@@ -212,7 +208,6 @@ class RealtimeChatService {
 
       return true;
     } catch (e) {
-      print('Error joining room: $e');
       return false;
     }
   }
@@ -230,7 +225,6 @@ class RealtimeChatService {
 
       return true;
     } catch (e) {
-      print('Error leaving room: $e');
       return false;
     }
   }

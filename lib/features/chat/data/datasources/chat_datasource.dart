@@ -61,7 +61,6 @@ class ChatDataSource {
       
       return chats;
     } catch (e) {
-      print('getChats error: $e');
       throw Exception('Failed to load chats: $e');
     }
   }
@@ -104,15 +103,25 @@ class ChatDataSource {
       String? mediaUrl;
 
       /// -------- IMAGE/VIDEO HANDLING --------
-      if (message.text.startsWith('IMAGE:')) {
+      if (message.text.startsWith('IMAGES:')) {
+        messageType = 'image';
+        final imagePaths = message.text.substring(7).split('|||');
+        final uploadedUrls = <String>[];
+        
+        for (int i = 0; i < imagePaths.length; i++) {
+          final url = await _uploadImageToStorage(imagePaths[i]);
+          if (url != null) uploadedUrls.add(url);
+        }
+        
+        mediaUrl = uploadedUrls.join('|||');
+        finalMessageText = '${imagePaths.length} Images';
+      } else if (message.text.startsWith('IMAGE:')) {
         messageType = 'image';
         final imagePath = message.text.substring(6);
-        print('Image path: $imagePath');
         
         // Upload image to Supabase Storage
         mediaUrl = await _uploadImageToStorage(imagePath);
         finalMessageText = 'Image';
-        print('Uploaded image URL: $mediaUrl');
       } else if (message.text.startsWith('VIDEO:')) {
         messageType = 'video';
         final videoPath = message.text.substring(6);
@@ -120,7 +129,6 @@ class ChatDataSource {
         // Upload video to Supabase Storage
         mediaUrl = await _uploadVideoToStorage(videoPath);
         finalMessageText = 'Video';
-        print('Uploaded video URL: $mediaUrl');
       }
 
       /// -------- INSERT MESSAGE --------
@@ -141,15 +149,12 @@ class ChatDataSource {
       print('Message sent successfully');
       
       // Send FCM notification directly
-      print('🔔 Attempting to send notification...');
       try {
         await _sendFcmNotification(message.senderId, message.receiverId, finalMessageText);
       } catch (e) {
-        print('❌ Notification error: $e');
       }
     } catch (e) {
-      print('Detailed error: $e');
-      print('Error type: ${e.runtimeType}');
+     
       throw Exception('Failed to send message: $e');
     }
   }
@@ -159,7 +164,6 @@ class ChatDataSource {
     try {
       final file = File(imagePath);
       if (!file.existsSync()) {
-        print('Image file does not exist: $imagePath');
         return null;
       }
 
@@ -203,7 +207,6 @@ class ChatDataSource {
 
       return publicUrl;
     } catch (e) {
-      print('Error uploading video: $e');
       return null;
     }
   }
@@ -283,7 +286,6 @@ Future<void> markMessagesAsRead(String chatUserId) async {
         }),
       );
     } catch (e) {
-      print('Notification error: $e');
     }
   }
 
