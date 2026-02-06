@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -85,7 +86,7 @@ class CommunityDrawer extends StatelessWidget {
                       radius: 24,
                       backgroundColor: Colors.white24,
                       child: Text(
-                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                        user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'U',
                         style: const TextStyle(fontSize: 18, color: Colors.white),
                       ),
                     ),
@@ -104,7 +105,7 @@ class CommunityDrawer extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  user.name,
+                  user?.fullName ?? 'User',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -112,7 +113,7 @@ class CommunityDrawer extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  user.phone ?? '+91 9011064801',
+                  user?.phone ?? '+91 9011064801',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
@@ -133,12 +134,12 @@ class CommunityDrawer extends StatelessWidget {
           leading: CircleAvatar(
             backgroundColor: Colors.blueGrey,
             child: Text(
-              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+              user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'U',
               style: const TextStyle(color: Colors.white),
             ),
           ),
           title: Text(
-            user.name,
+            user?.fullName ?? 'User',
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           trailing: const Icon(Icons.verified, color: Colors.green),

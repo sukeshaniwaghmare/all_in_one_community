@@ -1,29 +1,32 @@
-import '../../../profile/domain/user.dart';
+import 'package:all_in_one_community/core/supabase_service.dart';
+
+import '../../domain/user.dart';
 
 class ProfileDataSource {
-  static User getMockUser() {
-    return User(
-      id: '1',
-      name: 'John Doe',
-      email: 'john.doe@email.com',
-      role: 'Admin',
-      isDarkMode: false,
-      language: 'English',
-    );
+  final supabase = SupabaseService.instance.client;
+
+  Future<User?> fetchUserProfile(String userId) async {
+    final response = await supabase
+        .from('user_profiles')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return User.fromJson(response);
   }
 
-  static Future<User> fetchUser() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return getMockUser();
+  Future<void> updateUserProfile(User user) async {
+    await supabase
+        .from('user_profiles')
+        .upsert(user.toJson())
+        .eq('id', user.id);
   }
 
-  static Future<void> updateUser(User user) async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    // Simulate API call
-  }
-
-  static Future<void> signOut() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    // Simulate sign out process
+  Future<void> updateAvatar(String userId, String avatarUrl) async {
+    await supabase
+        .from('user_profiles')
+        .update({'avatar_url': avatarUrl, 'updated_at': DateTime.now().toIso8601String()})
+        .eq('id', userId);
   }
 }

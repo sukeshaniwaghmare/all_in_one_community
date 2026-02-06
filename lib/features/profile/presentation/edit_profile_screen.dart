@@ -12,19 +12,28 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _locationController;
   late TextEditingController _bioController;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<ProfileProvider>().user;
-    _nameController = TextEditingController(text: user.name);
-    _bioController = TextEditingController(text: user.bio ?? '');
+    _nameController = TextEditingController(text: user?.fullName ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _locationController = TextEditingController(text: user?.location ?? '');
+    _bioController = TextEditingController(text: user?.bio ?? '');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _locationController.dispose();
     _bioController.dispose();
     super.dispose();
   }
@@ -33,7 +42,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-
+      appBar: AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        title: const Text('Edit Profile'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check),
+            onPressed: _saveProfile,
+          ),
+        ],
+      ),
       body: ListView(
         children: [
           const SizedBox(height: 16),
@@ -49,11 +71,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _divider(),
 
           _section(
-            title: 'Your channel',
-            child: _actionRow(
-              value: 'Personal channel',
-              action: 'Add',
-              onTap: () {},
+            title: 'Phone',
+            child: _editableRow(
+              controller: _phoneController,
+              hint: 'Enter phone number',
+            ),
+          ),
+
+          _divider(),
+
+          _section(
+            title: 'Email',
+            child: _editableRow(
+              controller: _emailController,
+              hint: 'Enter email',
+            ),
+          ),
+
+          _divider(),
+
+          _section(
+            title: 'Location',
+            child: _editableRow(
+              controller: _locationController,
+              hint: 'Enter location',
             ),
           ),
 
@@ -66,20 +107,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               hint: 'Add a few words about yourself',
               maxLength: 50,
             ),
-            footer:
-                'You can add a few lines about yourself. Choose who can see your bio in Settings.',
-          ),
-
-          _divider(),
-
-          _section(
-            title: 'Your birthday',
-            child: _actionRow(
-              value: 'Birthday',
-              action: 'Add',
-              onTap: () {},
-            ),
-            footer: 'Only your contacts can see your birthday.',
           ),
         ],
       ),
@@ -148,7 +175,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // 🔹 Action row (Add / Change)
+  //  Action row (Add / Change)
   Widget _actionRow({
     required String value,
     required String action,
@@ -181,8 +208,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _saveProfile() {
     context.read<ProfileProvider>().updateProfile(
-          name: _nameController.text,
+          fullName: _nameController.text,
+          phone: _phoneController.text,
+          email: _emailController.text,
+          location: _locationController.text,
           bio: _bioController.text,
         );
+    Navigator.pop(context);
   }
 }

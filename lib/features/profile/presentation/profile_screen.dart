@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/profile_provider.dart';
@@ -38,12 +39,17 @@ class _ProfileScreenState extends State<ProfileScreen>
             return const Center(child: CircularProgressIndicator());
           }
 
-          final user = provider.user;
+          if (provider.user == null) {
+            return const Center(child: Text('No user data available'));
+          }
 
-          return Column(
-            children: [
-              // 🔵 Telegram Profile Header
-              Container(
+          final user = provider.user!;
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Profile Header
+                Container(
                 color: AppTheme.primaryColor,
                 padding: const EdgeInsets.only(top: 40, bottom: 20),
                 child: Column(
@@ -125,25 +131,54 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ],
                     ),
 
-                    CircleAvatar(
-                      radius: 45,
-                      backgroundColor: Colors.white,
-                      child: Text(
-                        user.name.isNotEmpty
-                            ? user.name[0].toUpperCase()
-                            : 'U',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
+                    GestureDetector(
+                      onTap: () => provider.updateProfileImage(),
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 45,
+                            backgroundImage: user.avatarUrl != null
+                                ? (user.avatarUrl!.startsWith('http')
+                                    ? NetworkImage(user.avatarUrl!) as ImageProvider
+                                    : FileImage(File(user.avatarUrl!)))
+                                : null,
+                            backgroundColor: Colors.white,
+                            child: user.avatarUrl == null
+                                ? Text(
+                                    user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                                    style: TextStyle(
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
                     const SizedBox(height: 12),
 
                     Text(
-                      user.name,
+                      user.fullName,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
@@ -164,29 +199,43 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
 
-              // ℹ️ Info Section
+              //  Info Section
               Container(
                 color: Colors.white,
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
+                    if (user.phone != null && user.phone!.isNotEmpty) ...[
+                      _InfoItem(
+                        title: user.phone!,
+                        subtitle: 'Mobile',
+                      ),
+                      const Divider(),
+                    ],
                     _InfoItem(
-                      title: '+91 9022518452',
-                      subtitle: 'Mobile',
+                      title: user.email ?? 'Not set',
+                      subtitle: 'Email',
                     ),
-                    Divider(),
+                    const Divider(),
                     _InfoItem(
-                      title: 'computer engineer 😎',
-                      subtitle: 'Bio',
+                      title: user.location ?? 'Not set',
+                      subtitle: 'Location',
                     ),
+                    if (user.bio != null && user.bio!.isNotEmpty) ...[
+                      const Divider(),
+                      _InfoItem(
+                        title: user.bio!,
+                        subtitle: 'Bio',
+                      ),
+                    ],
                   ],
                 ),
               ),
 
               const SizedBox(height: 8),
 
-              // 📌 Tabs
+              //Tabs
               Container(
                 color: Colors.white,
                 child: TabBar(
@@ -201,17 +250,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
 
-              // 📄 Tab Content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _EmptyPostView(),
-                    _EmptyPostView(),
-                  ],
+                // 📄 Tab Content
+                SizedBox(
+                  height: 400,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _EmptyPostView(),
+                      _EmptyPostView(),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
