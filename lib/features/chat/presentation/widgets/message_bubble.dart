@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import '../../data/models/chat_model.dart';
 import 'video_player_screen.dart';
 
@@ -15,9 +17,9 @@ class MessageBubble extends StatelessWidget {
       alignment: message.isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: message.isMe ? Colors.blue : Colors.grey[300],
+          color: const Color.fromARGB(255, 234, 232, 232),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -42,9 +44,11 @@ class MessageBubble extends StatelessWidget {
       
       // Check if it's a network URL (Supabase Storage)
       if (mediaData.startsWith('http')) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
+        return GestureDetector(
+          onTap: () => _openImage(context, mediaData),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
             mediaData,
             width: 200,
             height: 200,
@@ -88,18 +92,22 @@ class MessageBubble extends StatelessWidget {
               );
             },
           ),
+        ),
         );
       }
       // Check if it's a file path (legacy support)
       else if (mediaData.startsWith('/')) {
         if (File(mediaData).existsSync()) {
-          return ClipRRect(
+          return GestureDetector(
+            onTap: () => _openImage(context, mediaData),
+            child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.file(
               File(mediaData),
               width: 200,
               height: 200,
               fit: BoxFit.cover,
+            ),
             ),
           );
         } else {
@@ -214,8 +222,8 @@ class MessageBubble extends StatelessWidget {
 
     return Text(
       message.text,
-      style: TextStyle(
-        color: message.isMe ? Colors.white : Colors.black,
+      style: const TextStyle(
+        color: Colors.black,
       ),
     );
   }
@@ -227,5 +235,117 @@ class MessageBubble extends StatelessWidget {
         builder: (_) => VideoPlayerScreen(videoPath: videoPath),
       ),
     );
+  }
+
+  void _openImage(BuildContext context, String imagePath) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                color: Colors.white,
+                onSelected: (value) async {
+                  if (value == 'save') {
+                    await _saveImage(context, imagePath);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(value)),
+                    );
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'View contact',
+                    child: Text('View contact'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'save',
+                    child: Text('Save'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Share',
+                    child: Text('Share'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Edit',
+                    child: Text('Edit'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Show in chat',
+                    child: Text('Show in chat'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Forward',
+                    child: Text('Forward'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'Rotate',
+                    child: Text('Rotate'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: imagePath.startsWith('http')
+                  ? Image.network(imagePath)
+                  : Image.file(File(imagePath)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveImage(BuildContext context, String imagePath) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saving image...')),
+      );
+
+      if (imagePath.startsWith('http')) {
+        final response = await http.get(Uri.parse(imagePath));
+        final directory = await getApplicationDocumentsDirectory();
+        final fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final file = File('${directory.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+        
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image saved to ${file.path}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        final fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final newFile = File('${directory.path}/$fileName');
+        await File(imagePath).copy(newFile.path);
+        
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image saved to ${newFile.path}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

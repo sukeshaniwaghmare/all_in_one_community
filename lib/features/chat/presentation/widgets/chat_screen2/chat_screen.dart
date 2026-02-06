@@ -9,6 +9,11 @@ import 'dart:io';
 import '../../../data/models/chat_model.dart';
 import '../../../provider/chat_provider.dart';
 import '../../../../../core/services/storage_service.dart';
+import '../../../../../core/theme/app_theme.dart';
+import 'option_screen/media_screen.dart';
+import 'option_screen/disappearing_messages_screen.dart';
+import 'option_screen/chat_theme_screen.dart';
+import '../chats_creen3/info_screen.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -27,10 +32,12 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatDetailScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
   late ChatProvider _chatProvider;
   bool _showAttachmentOptions = false;
+  bool _isSearching = false;
   Timer? _refreshTimer;
   
   @override
@@ -64,7 +71,158 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.chat.name), // UI only
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+          onPressed: () {
+            if (_isSearching) {
+              setState(() {
+                _isSearching = false;
+                _searchController.clear();
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search messages...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  // Search logic here
+                },
+              )
+            : GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => InfoScreen(
+                        name: widget.chat.name,
+                        memberCount: 0,
+                        isGroup: widget.chat.isGroup,
+                      ),
+                    ),
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: const Color(0xFFDADADA),
+                      backgroundImage: widget.chat.profileImage != null
+                          ? NetworkImage(widget.chat.profileImage!)
+                          : null,
+                      child: widget.chat.profileImage == null
+                          ? Icon(
+                              widget.chat.isGroup ? Icons.group : Icons.person,
+                              size: 18,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        widget.chat.name,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.primaryColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+        actions: _isSearching
+            ? null
+            : [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
+            onSelected: (value) {
+              if (value == 'search') {
+                setState(() {
+                  _isSearching = true;
+                });
+              } else if (value == 'media') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => MediaScreen(
+                  chatName: widget.chat.name,
+                  receiverUserId: widget.chat.receiverUserId,
+                )));
+              } else if (value == 'disappearing') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const DisappearingMessagesScreen()));
+              } else if (value == 'theme') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatThemeScreen()));
+              } else if (value == 'more') {
+                _showMoreOptions(context);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'search',
+                child: Row(
+                  children: [
+                    Icon(Icons.search),
+                    SizedBox(width: 12),
+                    Text('Search'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'media',
+                child: Row(
+                  children: [
+                    Icon(Icons.perm_media),
+                    SizedBox(width: 12),
+                    Text('Media, links, and docs'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'disappearing',
+                child: Row(
+                  children: [
+                    Icon(Icons.timer),
+                    SizedBox(width: 12),
+                    Text('Disappearing messages'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'theme',
+                child: Row(
+                  children: [
+                    Icon(Icons.color_lens),
+                    SizedBox(width: 12),
+                    Text('Chat theme'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'more',
+                child: Row(
+                  children: [
+                    Icon(Icons.more_horiz),
+                    SizedBox(width: 12),
+                    Text('More'),
+                    Spacer(),
+                    Icon(Icons.arrow_right, size: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -188,7 +346,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                       const SizedBox(width: 8),
                       Container(
                         decoration: const BoxDecoration(
-                          color: Colors.blue,
+                          //color: Colors.blue,
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
@@ -230,6 +388,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     _refreshTimer?.cancel();
     _chatProvider.removeListener(_scrollToBottom);
     _messageController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -342,5 +501,107 @@ class _ChatDetailScreenState extends State<ChatScreen> {
         ),
       );
     }
+  }
+
+  void _showMoreOptions(BuildContext context) {
+    showMenu(
+      context: context,
+      position: const RelativeRect.fromLTRB(1000, 80, 0, 0),
+      items: [
+        const PopupMenuItem(
+          value: 'clear',
+          child: Row(
+            children: [
+              Icon(Icons.delete_sweep),
+              SizedBox(width: 12),
+              Text('Clear chat'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'export',
+          child: Row(
+            children: [
+              Icon(Icons.file_download),
+              SizedBox(width: 12),
+              Text('Export chat'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'shortcut',
+          child: Row(
+            children: [
+              Icon(Icons.add_to_home_screen),
+              SizedBox(width: 12),
+              Text('Add shortcut'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'list',
+          child: Row(
+            children: [
+              Icon(Icons.playlist_add),
+              SizedBox(width: 12),
+              Text('Add to list'),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'clear') {
+        _showClearChatDialog();
+      } else if (value == 'export') {
+        _exportChat();
+      } else if (value == 'shortcut') {
+        _addShortcut();
+      } else if (value == 'list') {
+        _addToList();
+      }
+    });
+  }
+
+  void _showClearChatDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear chat?'),
+        content: const Text('This will clear all messages from this chat. This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Chat cleared')),
+              );
+            },
+            child: const Text('CLEAR'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _exportChat() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Exporting chat...')),
+    );
+  }
+
+  void _addShortcut() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Shortcut added to home screen')),
+    );
+  }
+
+  void _addToList() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Added to list')),
+    );
   }
 }

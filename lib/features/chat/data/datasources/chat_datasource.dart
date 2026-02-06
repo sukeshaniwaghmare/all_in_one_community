@@ -19,19 +19,45 @@ class ChatDataSource {
 
       print('Current user ID: $currentUserId');
       
-      final response = await _supabaseService.client
+      // Get all users
+      final usersResponse = await _supabaseService.client
           .from('user_profiles')
-          .select(
-              'id, full_name, avatar_url, bio, phone, email, created_at');
+          .select('id, full_name, avatar_url, bio, phone, email, created_at');
 
-      print('Found ${response.length} users');
-      if (response.isNotEmpty) {
-        print('First user: ${response.first}');
+      print('Found ${usersResponse.length} users');
+      
+      // Get last message for each user
+      final chats = <Chat>[];
+      
+      for (var user in usersResponse) {
+        final userId = user['id'];
+        
+        // Get last message between current user and this user
+        final lastMessageResponse = await _supabaseService.client
+            .from('messages')
+            .select('message, created_at')
+            .or('and(sender_id.eq.$currentUserId,receiver_id.eq.$userId),and(sender_id.eq.$userId,receiver_id.eq.$currentUserId)')
+            .order('created_at', ascending: false)
+            .limit(1);
+        
+        final chat = Chat.fromUserProfile(user);
+        
+        // Update with last message info if exists
+        if (lastMessageResponse.isNotEmpty) {
+          final lastMsg = lastMessageResponse.first;
+          chats.add(chat.copyWith(
+            lastMessage: lastMsg['message'] ?? '',
+            lastMessageTime: DateTime.parse(lastMsg['created_at']),
+          ));
+        } else {
+          chats.add(chat);
+        }
       }
-
-      return response.map<Chat>((json) {
-        return Chat.fromUserProfile(json);
-      }).toList();
+      
+      // Sort by last message time (most recent first)
+      chats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+      
+      return chats;
     } catch (e) {
       print('getChats error: $e');
       throw Exception('Failed to load chats: $e');

@@ -301,7 +301,10 @@ class _InfoScreenState extends State<InfoScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => MediaScreen(chatName: widget.name),
+                  builder: (_) => MediaScreen(
+                    chatName: widget.name,
+                    receiverUserId: 'temp_user_id', // TODO: Get actual receiverUserId
+                  ),
                 ),
               );
             },

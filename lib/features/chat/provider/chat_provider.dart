@@ -46,6 +46,7 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       _chats = await getChatsUseCase();
+      _sortChatsByRecent();
     } catch (e) {
       debugPrint('Error loading chats: $e');
       _chats = [];
@@ -135,6 +136,17 @@ class ChatProvider extends ChangeNotifier {
 
     // optimistic UI
     _messages.add(message);
+    
+    // Update chat list
+    final chatIndex = _chats.indexWhere((chat) => chat.receiverUserId == receiverUserId);
+    if (chatIndex != -1) {
+      _chats[chatIndex] = _chats[chatIndex].copyWith(
+        lastMessage: text,
+        lastMessageTime: DateTime.now(),
+      );
+      _sortChatsByRecent();
+    }
+    
     notifyListeners();
 
     try {
@@ -286,7 +298,12 @@ class ChatProvider extends ChangeNotifier {
           chat.unreadCount + (data['sender_id'] != currentUserId ? 1 : 0),
     );
 
+    _sortChatsByRecent();
     notifyListeners();
+  }
+
+  void _sortChatsByRecent() {
+    _chats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
   }
 
   @override
