@@ -11,12 +11,12 @@ class ChatThemeScreen extends StatefulWidget {
 
 class _ChatThemeScreenState extends State<ChatThemeScreen> {
   final List<Map<String, dynamic>> themes = [
-    {'name': 'Default', 'color': Colors.teal, 'background': Colors.grey[100]},
-    {'name': 'Blue', 'color': Colors.blue, 'background': Colors.blue[50]},
-    {'name': 'Pink', 'color': Colors.pink, 'background': Colors.pink[50]},
-    {'name': 'Purple', 'color': Colors.purple, 'background': Colors.purple[50]},
-    {'name': 'Green', 'color': Colors.green, 'background': Colors.green[50]},
-    {'name': 'Orange', 'color': Colors.orange, 'background': Colors.orange[50]},
+    {'name': 'Default', 'color': Colors.teal[200], 'background': Colors.grey[100]},
+    {'name': 'Blue', 'color': Colors.blue[200], 'background': Colors.blue[50]},
+    {'name': 'Pink', 'color': Colors.pink[200], 'background': Colors.pink[50]},
+    {'name': 'Purple', 'color': Colors.purple[200], 'background': Colors.purple[50]},
+    {'name': 'Green', 'color': Colors.green[200], 'background': Colors.green[50]},
+    {'name': 'Orange', 'color': Colors.orange[200], 'background': Colors.orange[50]},
   ];
 
   @override

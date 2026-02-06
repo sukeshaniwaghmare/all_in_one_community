@@ -75,6 +75,8 @@ class ChatDataSource {
         throw Exception('User not authenticated');
       }
 
+      print('Getting messages for chatId: $chatId');
+      
       final response = await _supabaseService.client
           .from('messages')
           .select('*')
@@ -82,11 +84,31 @@ class ChatDataSource {
               'and(sender_id.eq.$currentUserId,receiver_id.eq.$chatId),and(sender_id.eq.$chatId,receiver_id.eq.$currentUserId)')
           .order('created_at', ascending: true);
 
-      return response
-          .map<ChatMessage>((json) =>
-              ChatMessage.fromJson(json, currentUserId))
-          .toList();
+      print('Got ${response.length} messages');
+
+      // Fetch sender names for all unique sender IDs
+      final senderIds = response.map((m) => m['sender_id']).toSet().toList();
+      final senderNames = <String, String>{};
+      
+      for (final senderId in senderIds) {
+        try {
+          final user = await _supabaseService.client
+              .from('user_profiles')
+              .select('full_name')
+              .eq('id', senderId)
+              .single();
+          senderNames[senderId] = user['full_name'] ?? 'Unknown User';
+        } catch (e) {
+          senderNames[senderId] = 'Unknown User';
+        }
+      }
+
+      return response.map<ChatMessage>((json) {
+        json['sender_name'] = senderNames[json['sender_id']] ?? 'Unknown User';
+        return ChatMessage.fromJson(json, currentUserId);
+      }).toList();
     } catch (e) {
+      print('Error getting messages: $e');
       return [];
     }
   }

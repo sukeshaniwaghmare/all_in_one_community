@@ -30,11 +30,8 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json, String currentUserId) {
-    // Extract sender full_name from nested object
-    String senderName = 'Unknown User';
-    if (json['sender'] != null && json['sender']['full_name'] != null) {
-      senderName = json['sender']['full_name'];
-    }
+    // Extract sender name from direct field or nested object
+    String senderName = json['sender_name'] ?? 'Unknown User';
     
     return ChatMessage(
       id: json['id'].toString(),

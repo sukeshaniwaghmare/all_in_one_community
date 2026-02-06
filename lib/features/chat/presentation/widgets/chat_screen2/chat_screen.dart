@@ -1,5 +1,5 @@
 import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
-import 'package:all_in_one_community/features/chat/presentation/widgets/message_bubble.dart';
+import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/message_bubble.dart';
 import 'package:all_in_one_community/features/notifications/services/notification_service.dart' as local_notifications;
 import 'package:all_in_one_community/features/notifications/services/services/fcm_service.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +45,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   bool _showAttachmentOptions = false;
   bool _isSearching = false;
   Timer? _refreshTimer;
+  Map<String, dynamic>? _selectedTheme;
   
   // ==================== LIFECYCLE: INIT ====================
   @override
@@ -177,7 +178,14 @@ class _ChatDetailScreenState extends State<ChatScreen> {
               } else if (value == 'disappearing') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const DisappearingMessagesScreen()));
               } else if (value == 'theme') {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatThemeScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChatThemeScreen()),
+                ).then((theme) {
+                  if (theme != null) {
+                    setState(() => _selectedTheme = theme);
+                  }
+                });
               } else if (value == 'more') {
                 _showMoreOptions(context);
               }
@@ -270,6 +278,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     return MessageBubble(
                       message: chatProvider.messages[index],
+                      theme: _selectedTheme,
                     );
                   },
                 );

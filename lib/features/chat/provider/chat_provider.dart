@@ -228,16 +228,29 @@ class ChatProvider extends ChangeNotifier {
     _realtimeService.subscribeToMessages(receiverUserId);
   }
 
-  void _handleNewMessage(Map<String, dynamic> data) {
+  void _handleNewMessage(Map<String, dynamic> data) async {
     final currentUserId = _authService.currentUserId;
     print('Handling new realtime message: $data');
+
+    // Fetch sender name
+    String senderName = 'User';
+    try {
+      final sender = await Supabase.instance.client
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', data['sender_id'])
+          .single();
+      senderName = sender['full_name'] ?? 'User';
+    } catch (e) {
+      print('Error fetching sender name: $e');
+    }
 
     final message = ChatMessage(
       id: data['id'].toString(),
       text: data['message'] ?? '',
       senderId: data['sender_id'],
       receiverId: data['receiver_id'],
-      senderName: 'User',
+      senderName: senderName,
       timestamp: DateTime.parse(data['created_at']),
       type: _getMessageTypeFromString(data['message_type']),
       mediaUrl: data['media_url'],

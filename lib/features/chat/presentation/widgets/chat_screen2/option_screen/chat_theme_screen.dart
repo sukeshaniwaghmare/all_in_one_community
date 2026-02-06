@@ -5,6 +5,18 @@ class ChatThemeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themes = [
+      {'name': 'Blue', 'color': Colors.blue},
+      {'name': 'Green', 'color': Colors.green},
+      {'name': 'Red', 'color': Colors.red},
+      {'name': 'Purple', 'color': Colors.purple},
+      {'name': 'Orange', 'color': Colors.orange},
+      {'name': 'Pink', 'color': Colors.pink},
+      {'name': 'Teal', 'color': Colors.teal},
+      {'name': 'Indigo', 'color': Colors.indigo},
+      {'name': 'Brown', 'color': Colors.brown},
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat theme'),
@@ -16,18 +28,16 @@ class ChatThemeScreen extends StatelessWidget {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        itemCount: 9,
+        itemCount: themes.length,
         itemBuilder: (context, index) {
-          final colors = [
-            Colors.blue, Colors.green, Colors.red,
-            Colors.purple, Colors.orange, Colors.pink,
-            Colors.teal, Colors.indigo, Colors.brown,
-          ];
+          final theme = themes[index];
           return GestureDetector(
-            onTap: () {},
+            onTap: () {
+              Navigator.pop(context, theme);
+            },
             child: Container(
               decoration: BoxDecoration(
-                color: colors[index],
+                color: theme['color'] as Color,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),

@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../../../core/theme/app_theme.dart';
 import '../../../../provider/chat_provider.dart';
 import '../../../../data/models/chat_model.dart';
-import '../../video_player_screen.dart';
+import '../video_player_screen.dart';
 
 class MediaScreen extends StatefulWidget {
   final String chatName;

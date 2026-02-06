@@ -3,24 +3,29 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import '../../data/models/chat_model.dart';
+import '../../../data/models/chat_model.dart';
 import 'video_player_screen.dart';
 import 'image_gallery_screen.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
+  final Map<String, dynamic>? theme;
 
-  const MessageBubble({super.key, required this.message});
+  const MessageBubble({super.key, required this.message, this.theme});
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = message.isMe 
+        ? (theme?['color'] ?? const Color(0xFFD1C4E9))
+        : const Color(0xFFEEEEEE);
+    
     return Align(
       alignment: message.isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 234, 232, 232),
+          color: bgColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -29,7 +34,7 @@ class MessageBubble extends StatelessWidget {
             if (!message.isMe)
               Text(
                 message.senderName,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF6750A4)),
               ),
             _buildMessageContent(context),
           ],
