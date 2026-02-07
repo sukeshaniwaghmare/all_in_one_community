@@ -214,6 +214,34 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  // -------------------- DELETE MESSAGE --------------------
+
+  Future<void> deleteMessage(String messageId) async {
+    try {
+      print('🗑️ Deleting message ID: $messageId');
+      
+      // Delete from database using UUID string directly
+      final response = await Supabase.instance.client
+          .from('messages')
+          .delete()
+          .eq('id', messageId)
+          .select();
+      
+      print('✅ Database response: $response');
+      
+      // Remove from local list
+      final beforeCount = _messages.length;
+      _messages.removeWhere((msg) => msg.id == messageId);
+      final afterCount = _messages.length;
+      
+      print('✅ Removed from list. Before: $beforeCount, After: $afterCount');
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error deleting message: $e');
+      throw Exception('Failed to delete message: $e');
+    }
+  }
+
   // -------------------- REALTIME --------------------
 
   void _initializeRealtimeListeners() {

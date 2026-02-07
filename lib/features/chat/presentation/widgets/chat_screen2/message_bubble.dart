@@ -3,7 +3,9 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../data/models/chat_model.dart';
+import '../../../provider/chat_provider.dart';
 import 'video_player_screen.dart';
 import 'image_gallery_screen.dart';
 
@@ -19,28 +21,145 @@ class MessageBubble extends StatelessWidget {
         ? (theme?['color'] ?? const Color(0xFFD1C4E9))
         : const Color(0xFFEEEEEE);
     
-    return Align(
-      alignment: message.isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onLongPress: () => _showMessageOptions(context),
+      child: Align(
+        alignment: message.isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!message.isMe)
+                Text(
+                  message.senderName,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF6750A4)),
+                ),
+              _buildMessageContent(context),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  void _showMessageOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (!message.isMe)
-              Text(
-                message.senderName,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF6750A4)),
+            ListTile(
+              leading: Icon(Icons.reply, color: Colors.grey[700]),
+              title: Text('Reply'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Reply feature coming soon')),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.copy, color: Colors.grey[700]),
+              title: Text('Copy'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Message copied')),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.star_border, color: Colors.grey[700]),
+              title: Text('Star'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Message starred')),
+                );
+              },
+            ),
+            if (message.isMe)
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: Colors.red),
+                title: Text('Delete', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteDialog(context);
+                },
               ),
-            _buildMessageContent(context),
+            ListTile(
+              leading: Icon(Icons.forward, color: Colors.grey[700]),
+              title: Text('Forward'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Forward feature coming soon')),
+                );
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete message?'),
+        content: Text('This message will be deleted for everyone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteMessage(context);
+            },
+            child: Text('DELETE', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteMessage(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final provider = context.read<ChatProvider>();
+    
+    try {
+      await provider.deleteMessage(message.id);
+      
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Message deleted'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete message'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Widget _buildMessageContent(BuildContext context) {
