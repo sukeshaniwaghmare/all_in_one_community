@@ -164,6 +164,8 @@ class ChatDataSource {
             receiverId: chatId,
             senderName: senderNames[json['sender_id']] ?? 'Unknown User',
             timestamp: DateTime.parse(json['created_at']),
+            type: _getMessageTypeFromString(json['message_type']),
+            mediaUrl: json['media_url'],
             isMe: json['sender_id'] == currentUserId,
           );
         }).toList();
@@ -311,9 +313,8 @@ class ChatDataSource {
       }
 
       final fileName = 'videos/${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-      print('📹 Uploading video as: $fileName');
+    
       final videoBytes = await file.readAsBytes();
-      print('📹 Video size: ${videoBytes.length} bytes');
       
       await _supabaseService.client.storage
           .from('chat-media')
@@ -406,6 +407,21 @@ Future<void> markMessagesAsRead(String chatUserId) async {
         }),
       );
     } catch (e) {
+    }
+  }
+
+  MessageType _getMessageTypeFromString(String? type) {
+    switch (type) {
+      case 'image':
+        return MessageType.image;
+      case 'audio':
+        return MessageType.audio;
+      case 'video':
+        return MessageType.video;
+      case 'file':
+        return MessageType.file;
+      default:
+        return MessageType.text;
     }
   }
 

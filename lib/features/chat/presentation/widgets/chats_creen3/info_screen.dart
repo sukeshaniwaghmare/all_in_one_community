@@ -1,3 +1,4 @@
+import 'package:all_in_one_community/features/chat/presentation/widgets/chats_creen3/edit_infoscreen_screen.dart';
 import 'package:flutter/material.dart';
 import 'option_screen/create_group_screen.dart';
 import 'package:provider/provider.dart';
@@ -11,14 +12,15 @@ import '../chat_screen2/option_screen/media_screen.dart';
 import '../../../../notifications/presentation/notification_screen.dart';
 import 'option_screen/disappearing_messages_screen_infoscreen.dart';
 import 'option_screen/advanced_chat_privacy_screen_infoscreen .dart';
-import 'option_screen/edit_contact_screen.dart';
 import '../../../../calls/presentation/call_info_screen.dart';
 import '../../../../video_call/presentation/video_call_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InfoScreen extends StatefulWidget {
   final String name;
   final int memberCount;
   final bool isGroup;
+  final String? groupId;
   final String? description;
   final String? createdBy;
   final String? createdDate;
@@ -28,6 +30,7 @@ class InfoScreen extends StatefulWidget {
     required this.name,
     required this.memberCount,
     this.isGroup = true,
+    this.groupId,
     this.description,
     this.createdBy,
     this.createdDate,
@@ -41,6 +44,27 @@ class _InfoScreenState extends State<InfoScreen> {
   bool _isChatLocked = false;
   bool _isFavorite = false;
   XFile? _profileImage;
+  bool _isEditMode = false;
+  late TextEditingController _nameController;
+  late TextEditingController _descriptionController;
+  late String _currentName;
+  late String? _currentDescription;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentName = widget.name;
+    _currentDescription = widget.description;
+    _nameController = TextEditingController(text: _currentName);
+    _descriptionController = TextEditingController(text: _currentDescription ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,14 +74,30 @@ class _InfoScreenState extends State<InfoScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(_isEditMode ? Icons.close : Icons.arrow_back, color: AppTheme.primaryColor),
+          onPressed: () {
+            if (_isEditMode) {
+              setState(() {
+                _isEditMode = false;
+                _nameController.text = widget.name;
+                _descriptionController.text = widget.description ?? '';
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: Text(
-          widget.name,
+          _isEditMode ? 'Edit Info' : _currentName,
           style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
         ),
         actions: [
+          if (_isEditMode)
+            TextButton(
+              onPressed: _saveChanges,
+              child: const Text('Save', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            )
+          else ...[
           IconButton(
             icon: Icon(Icons.call, color: AppTheme.primaryColor),
             onPressed: () {
@@ -98,7 +138,6 @@ class _InfoScreenState extends State<InfoScreen> {
                 case 'edit':
                   _editContact();
                   break;
-                
               }
             },
             itemBuilder: (context) => [
@@ -112,16 +151,17 @@ class _InfoScreenState extends State<InfoScreen> {
                   ],
                 ),
               ),
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit),
-                    SizedBox(width: 8),
-                    Text('Edit'),
-                  ],
+              if (widget.isGroup)
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
                 ),
-              ),
               const PopupMenuItem(
                 value: 'verify',
                 child: Row(
@@ -134,6 +174,7 @@ class _InfoScreenState extends State<InfoScreen> {
               ),
             ],
           ),
+          ],
         ],
       ),
       body: ListView(
@@ -197,10 +238,24 @@ class _InfoScreenState extends State<InfoScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            widget.name,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-          ),
+          if (_isEditMode)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: TextField(
+                controller: _nameController,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                decoration: const InputDecoration(
+                  hintText: 'Group name',
+                  border: UnderlineInputBorder(),
+                ),
+              ),
+            )
+          else
+            Text(
+              _currentName,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
           const SizedBox(height: 4),
           Text(
             widget.isGroup ? 'Group · ${widget.memberCount} members' : 'Contact',
@@ -256,13 +311,23 @@ class _InfoScreenState extends State<InfoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.description ?? 'Add group description',
-            style: TextStyle(
-              color: widget.description == null ? const Color(0xFF128C7E) : Colors.black87,
-              fontWeight: widget.description == null ? FontWeight.w500 : FontWeight.normal,
+          if (_isEditMode)
+            TextField(
+              controller: _descriptionController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Add group description',
+                border: OutlineInputBorder(),
+              ),
+            )
+          else
+            Text(
+              _currentDescription ?? 'Add group description',
+              style: TextStyle(
+                color: _currentDescription == null ? const Color(0xFF128C7E) : Colors.black87,
+                fontWeight: _currentDescription == null ? FontWeight.w500 : FontWeight.normal,
+              ),
             ),
-          ),
           if (widget.createdBy != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -751,38 +816,61 @@ class _InfoScreenState extends State<InfoScreen> {
     );
   }
 
-  void _editContact() {
-    print('Edit contact tapped for: ${widget.name}');
+  void _editContact() async {
+    print('Edit contact tapped for: $_currentName');
     try {
-      Navigator.of(context).push(
+      final result = await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => EditContactScreen(contactName: widget.name),
+          builder: (context) => EditInfoScreen(
+            groupName: _currentName,
+            description: _currentDescription,
+            groupId: widget.groupId,
+          ),
         ),
-      ).then((result) {
-        print('Returned from EditContactScreen with result: $result');
-        if (result != null && result is Map<String, String>) {
-          final newName = result['name']!;
-          
-          // Update in ChatProvider
-          final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-          chatProvider.updateContactName(widget.name, newName);
-          
-          // Update in CommunityProvider
-          final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
-          communityProvider.updateContactName(widget.name, newName);
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Contact updated: $newName')),
-          );
-          
-          // Go back to refresh the previous screen
-          Navigator.pop(context);
+      );
+      
+      print('Returned from EditInfoScreen with result: $result');
+      if (result != null && result is Map<String, String>) {
+        final newName = result['name']!;
+        final newDescription = result['description'];
+        final groupId = result['groupId'];
+        
+        if (groupId != null) {
+          // Update in Supabase
+          await Supabase.instance.client
+              .from('groups')
+              .update({
+                'name': newName,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', groupId);
+          print('✅ Group name updated in Supabase: $newName');
         }
-      });
+        
+        // Update in ChatProvider
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+        chatProvider.updateContactName(_currentName, newName);
+        
+        // Update in CommunityProvider
+        final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+        communityProvider.updateContactName(_currentName, newName);
+        
+        // Update local state
+        setState(() {
+          _currentName = newName;
+          _currentDescription = newDescription;
+          _nameController.text = newName;
+          _descriptionController.text = newDescription ?? '';
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group info updated')),
+        );
+      }
     } catch (e) {
-      print('Navigation error: $e');
+      print('❌ Error updating group: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening edit screen: $e')),
+        SnackBar(content: Text('Error updating group: $e')),
       );
     }
   }
@@ -918,6 +1006,34 @@ class _InfoScreenState extends State<InfoScreen> {
         ],
       ),
     );
+  }
+
+  void _saveChanges() {
+    final newName = _nameController.text.trim();
+    final newDescription = _descriptionController.text.trim();
+
+    if (newName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Group name cannot be empty')),
+      );
+      return;
+    }
+
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    chatProvider.updateContactName(widget.name, newName);
+
+    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+    communityProvider.updateContactName(widget.name, newName);
+
+    setState(() {
+      _isEditMode = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Group info updated')),
+    );
+
+    Navigator.pop(context);
   }
 }
 

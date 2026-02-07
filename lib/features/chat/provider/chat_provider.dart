@@ -153,6 +153,12 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       if (isGroup) {
+        // Get group name
+        final groupName = _chats.firstWhere(
+          (chat) => chat.receiverUserId == receiverUserId,
+          orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), unreadCount: 0, isGroup: false, receiverUserId: ''),
+        ).name;
+        
         // Handle video/image for groups
         String finalMessage = text;
         String? mediaUrl;
@@ -169,15 +175,32 @@ class ChatProvider extends ChangeNotifier {
           finalMessage = 'Image';
         }
         
-        // Insert into group_messages table
-        await Supabase.instance.client.from('group_messages').insert({
+        // Insert into group_messages table and get the generated ID
+        final response = await Supabase.instance.client.from('group_messages').insert({
           'group_id': receiverUserId,
           'sender_id': currentUserId,
           'message': finalMessage,
+          'group_name': groupName,
           'message_type': text.startsWith('VIDEO:') ? 'video' : text.startsWith('IMAGE:') ? 'image' : 'text',
           'media_url': mediaUrl,
           'created_at': DateTime.now().toIso8601String(),
-        });
+        }).select('id').single();
+        
+        // Update local message with database ID
+        final dbId = response['id'].toString();
+        final messageIndex = _messages.indexWhere((m) => m.id == message.id);
+        if (messageIndex != -1) {
+          _messages[messageIndex] = ChatMessage(
+            id: dbId,
+            text: finalMessage,
+            senderId: currentUserId,
+            receiverId: receiverUserId,
+            senderName: 'Me',
+            timestamp: DateTime.now(),
+            isMe: true,
+          );
+          notifyListeners();
+        }
       } else {
         await sendMessageUseCase(message);
       }
@@ -241,6 +264,7 @@ class ChatProvider extends ChangeNotifier {
       final members = memberIds.map((memberId) => {
         'group_id': groupId,
         'user_id': memberId,
+        'group_name': groupName,
         'joined_at': DateTime.now().toIso8601String(),
       }).toList();
 
@@ -248,6 +272,7 @@ class ChatProvider extends ChangeNotifier {
       members.add({
         'group_id': groupId,
         'user_id': currentUserId,
+        'group_name': groupName,
         'joined_at': DateTime.now().toIso8601String(),
       });
 
@@ -294,14 +319,25 @@ class ChatProvider extends ChangeNotifier {
     try {
       print('🗑️ Deleting message ID: $messageId');
       
-      // Delete from database using UUID string directly
-      final response = await Supabase.instance.client
-          .from('messages')
-          .delete()
-          .eq('id', messageId)
-          .select();
+      // Check if current chat is a group
+      final isGroup = _currentReceiverUserId != null && 
+          _chats.any((chat) => chat.receiverUserId == _currentReceiverUserId && chat.isGroup);
       
-      print('✅ Database response: $response');
+      if (isGroup) {
+        // Delete from group_messages table
+        await Supabase.instance.client
+            .from('group_messages')
+            .delete()
+            .eq('id', messageId);
+      } else {
+        // Delete from messages table
+        await Supabase.instance.client
+            .from('messages')
+            .delete()
+            .eq('id', messageId);
+      }
+      
+      print('✅ Message deleted from database');
       
       // Remove from local list
       final beforeCount = _messages.length;

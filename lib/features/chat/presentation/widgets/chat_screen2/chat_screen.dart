@@ -117,15 +117,30 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                 },
               )
             : GestureDetector(
-                onTap: () {
+                onTap: () async {
                   // LOGIC: Navigate to info screen
+                  int memberCount = 0;
+                  if (widget.chat.isGroup) {
+                    // Fetch group member count
+                    try {
+                      final members = await Supabase.instance.client
+                          .from('group_members')
+                          .select('id')
+                          .eq('group_id', widget.chat.receiverUserId);
+                      memberCount = members.length;
+                    } catch (e) {
+                      print('Error fetching member count: $e');
+                    }
+                  }
+                  
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => InfoScreen(
                         name: widget.chat.name,
-                        memberCount: 0,
+                        memberCount: memberCount,
                         isGroup: widget.chat.isGroup,
+                        groupId: widget.chat.isGroup ? widget.chat.receiverUserId : null,
                       ),
                     ),
                   );

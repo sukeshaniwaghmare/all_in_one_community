@@ -15,7 +15,6 @@ class FCMService {
   }
 
   static Future<void> initialize() async {
-    print('🔧 Initializing FCM Service...');
     
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(

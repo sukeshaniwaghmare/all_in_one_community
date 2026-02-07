@@ -142,7 +142,7 @@ class CommunityProvider extends ChangeNotifier {
   }
 
   List<String> getGroupMembers(String groupName) {
-    final chat = _chats.firstWhere((c) => c.name == groupName, orElse: () => _chats.first);
+    final chat = _chats.firstWhere((c) => c.name == groupName, orElse: () => ChatItem(initials: '', name: '', preview: '', time: '', unread: 0, avatarColor: Colors.grey));
     return chat.members ?? [];
   }
 
