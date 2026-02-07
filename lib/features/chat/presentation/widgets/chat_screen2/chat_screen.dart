@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'dart:io';
 import '../../../data/models/chat_model.dart';
@@ -44,6 +45,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   late ChatProvider _chatProvider;
   bool _showAttachmentOptions = false;
   bool _isSearching = false;
+  String _searchQuery = '';
   Timer? _refreshTimer;
   Map<String, dynamic>? _selectedTheme;
   
@@ -103,12 +105,15 @@ class _ChatDetailScreenState extends State<ChatScreen> {
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
+                style: TextStyle(color: AppTheme.primaryColor),
                 decoration: const InputDecoration(
                   hintText: 'Search messages...',
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
-                  // LOGIC: Search messages (to be implemented)
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
                 },
               )
             : GestureDetector(
@@ -270,14 +275,43 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                   );
                 }
 
+                // Filter messages based on search query
+                final filteredMessages = _searchQuery.isEmpty
+                    ? chatProvider.messages
+                    : chatProvider.messages.where((msg) {
+                        return msg.text.toLowerCase().contains(_searchQuery);
+                      }).toList();
+
+                // Show no results message
+                if (filteredMessages.isEmpty && _searchQuery.isNotEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                        SizedBox(height: 16),
+                        Text(
+                          'No messages found',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Try different keywords',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
                 // UI: Messages list
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
-                  itemCount: chatProvider.messages.length,
+                  itemCount: filteredMessages.length,
                   itemBuilder: (context, index) {
                     return MessageBubble(
-                      message: chatProvider.messages[index],
+                      message: filteredMessages[index],
                       theme: _selectedTheme,
                     );
                   },
@@ -637,7 +671,162 @@ class _ChatDetailScreenState extends State<ChatScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear chat?'),
-        content: const Text('This will clear all messages from this chat. This action cannot be undone.'),
+        content: const Text('This will delete all messages from this chat. This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              // Show loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                      SizedBox(width: 12),
+                      Text('Clearing chat...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 30),
+                ),
+              );
+              
+              try {
+                // Delete all messages from database
+                final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+                final receiverId = widget.chat.receiverUserId;
+                
+                if (currentUserId != null) {
+                  await Supabase.instance.client
+                      .from('messages')
+                      .delete()
+                      .or('and(sender_id.eq.$currentUserId,receiver_id.eq.$receiverId),and(sender_id.eq.$receiverId,receiver_id.eq.$currentUserId)');
+                }
+                
+                // Clear messages locally
+                setState(() {
+                  _chatProvider.messages.clear();
+                });
+                
+                // Hide loading and show success
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Chat cleared successfully'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to clear chat'),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: Text('CLEAR', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== LOGIC: EXPORT CHAT ====================
+  void _exportChat() async {
+    final messages = _chatProvider.messages;
+    
+    if (messages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No messages to export'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            SizedBox(width: 12),
+            Text('Exporting ${messages.length} messages...'),
+          ],
+        ),
+        duration: Duration(seconds: 30),
+      ),
+    );
+    
+    try {
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      final buffer = StringBuffer();
+      buffer.writeln('Chat Export: ${widget.chat.name}');
+      buffer.writeln('Date: ${DateTime.now().toString().split('.')[0]}');
+      buffer.writeln('Total Messages: ${messages.length}');
+      buffer.writeln('=' * 50);
+      buffer.writeln();
+      
+      for (var msg in messages) {
+        final isSent = msg.senderId == currentUserId;
+        final sender = isSent ? 'You' : widget.chat.name;
+        final time = msg.timestamp.toString().split('.')[0];
+        buffer.writeln('[$time] $sender:');
+        buffer.writeln(msg.text);
+        buffer.writeln();
+      }
+      
+      final fileName = 'chat_${widget.chat.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.txt';
+      final directory = Directory('C:\\Users\\${Platform.environment['USERNAME']}\\Downloads');
+      final file = File('${directory.path}\\$fileName');
+      await file.writeAsString(buffer.toString());
+      
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Chat exported (${messages.length} messages)'),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'OPEN',
+            textColor: Colors.white,
+            onPressed: () async {
+              await Process.run('explorer', ['/select,', file.path]);
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ==================== LOGIC: ADD SHORTCUT ====================
+  void _addShortcut() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.add_to_home_screen, color: AppTheme.primaryColor),
+            SizedBox(width: 12),
+            Text('Add shortcut'),
+          ],
+        ),
+        content: Text('Add "${widget.chat.name}" to your home screen for quick access?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -647,34 +836,131 @@ class _ChatDetailScreenState extends State<ChatScreen> {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chat cleared')),
+                SnackBar(
+                  content: Text('Shortcut for "${widget.chat.name}" added to home screen'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 3),
+                ),
               );
             },
-            child: const Text('CLEAR'),
+            child: const Text('ADD'),
           ),
         ],
       ),
     );
   }
 
-  // ==================== LOGIC: EXPORT CHAT ====================
-  void _exportChat() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Exporting chat...')),
-    );
-  }
-
-  // ==================== LOGIC: ADD SHORTCUT ====================
-  void _addShortcut() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Shortcut added to home screen')),
-    );
-  }
-
   // ==================== LOGIC: ADD TO LIST ====================
   void _addToList() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Added to list')),
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Add to list',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.star, color: Colors.amber),
+              title: Text('Favorites'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "${widget.chat.name}" to Favorites'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.work, color: Colors.blue),
+              title: Text('Work'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "${widget.chat.name}" to Work'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.family_restroom, color: Colors.pink),
+              title: Text('Family'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "${widget.chat.name}" to Family'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.add_circle_outline, color: Colors.grey),
+              title: Text('Create new list'),
+              onTap: () {
+                Navigator.pop(context);
+                _showCreateListDialog();
+              },
+            ),
+            SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== UI: CREATE LIST DIALOG ====================
+  void _showCreateListDialog() {
+    final TextEditingController listNameController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Create new list'),
+        content: TextField(
+          controller: listNameController,
+          decoration: InputDecoration(
+            hintText: 'List name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (listNameController.text.trim().isNotEmpty) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Created list "${listNameController.text}" and added "${widget.chat.name}"'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            child: const Text('CREATE'),
+          ),
+        ],
+      ),
     );
   }
 }

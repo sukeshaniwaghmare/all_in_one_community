@@ -56,6 +56,49 @@ class ChatDataSource {
         }
       }
       
+      // Get user's groups
+      try {
+        final groupMembersResponse = await _supabaseService.client
+            .from('group_members')
+            .select('group_id')
+            .eq('user_id', currentUserId);
+        
+        for (var groupMember in groupMembersResponse) {
+          final groupId = groupMember['group_id'];
+          
+          // Get group details
+          final groupResponse = await _supabaseService.client
+              .from('groups')
+              .select('id, name, avatar_url, created_at')
+              .eq('id', groupId)
+              .single();
+          
+          // Get last message for this group
+          final lastGroupMessage = await _supabaseService.client
+              .from('group_messages')
+              .select('message, created_at')
+              .eq('group_id', groupId)
+              .order('created_at', ascending: false)
+              .limit(1);
+          
+          final groupChat = Chat(
+            id: groupId,
+            name: groupResponse['name'] ?? 'Group',
+            lastMessage: lastGroupMessage.isNotEmpty ? lastGroupMessage.first['message'] : 'No messages yet',
+            lastMessageTime: lastGroupMessage.isNotEmpty 
+                ? DateTime.parse(lastGroupMessage.first['created_at'])
+                : DateTime.parse(groupResponse['created_at']),
+            unreadCount: 0,
+            isGroup: true,
+            receiverUserId: groupId,
+          );
+          
+          chats.add(groupChat);
+        }
+      } catch (e) {
+        print('Error loading groups: $e');
+      }
+      
       // Sort by last message time (most recent first)
       chats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
       
@@ -77,36 +120,86 @@ class ChatDataSource {
 
       print('Getting messages for chatId: $chatId');
       
-      final response = await _supabaseService.client
-          .from('messages')
-          .select('*')
-          .or(
-              'and(sender_id.eq.$currentUserId,receiver_id.eq.$chatId),and(sender_id.eq.$chatId,receiver_id.eq.$currentUserId)')
-          .order('created_at', ascending: true);
-
-      print('Got ${response.length} messages');
-
-      // Fetch sender names for all unique sender IDs
-      final senderIds = response.map((m) => m['sender_id']).toSet().toList();
-      final senderNames = <String, String>{};
+      // Check if this is a group by checking group_members table
+      final groupCheck = await _supabaseService.client
+          .from('group_members')
+          .select('group_id')
+          .eq('group_id', chatId)
+          .limit(1);
       
-      for (final senderId in senderIds) {
-        try {
-          final user = await _supabaseService.client
-              .from('user_profiles')
-              .select('full_name')
-              .eq('id', senderId)
-              .single();
-          senderNames[senderId] = user['full_name'] ?? 'Unknown User';
-        } catch (e) {
-          senderNames[senderId] = 'Unknown User';
+      final isGroup = groupCheck.isNotEmpty;
+      
+      if (isGroup) {
+        // Fetch group messages
+        final response = await _supabaseService.client
+            .from('group_messages')
+            .select('*')
+            .eq('group_id', chatId)
+            .order('created_at', ascending: true);
+        
+        print('Got ${response.length} messages');
+        
+        // Fetch sender names
+        final senderIds = response.map((m) => m['sender_id']).toSet().toList();
+        final senderNames = <String, String>{};
+        
+        for (final senderId in senderIds) {
+          try {
+            final user = await _supabaseService.client
+                .from('user_profiles')
+                .select('full_name')
+                .eq('id', senderId)
+                .single();
+            senderNames[senderId] = user['full_name'] ?? 'Unknown User';
+          } catch (e) {
+            senderNames[senderId] = 'Unknown User';
+          }
         }
-      }
+        
+        return response.map<ChatMessage>((json) {
+          return ChatMessage(
+            id: json['id'].toString(),
+            text: json['message'] ?? '',
+            senderId: json['sender_id'],
+            receiverId: chatId,
+            senderName: senderNames[json['sender_id']] ?? 'Unknown User',
+            timestamp: DateTime.parse(json['created_at']),
+            isMe: json['sender_id'] == currentUserId,
+          );
+        }).toList();
+      } else {
+        // Fetch regular messages
+        final response = await _supabaseService.client
+            .from('messages')
+            .select('*')
+            .or(
+                'and(sender_id.eq.$currentUserId,receiver_id.eq.$chatId),and(sender_id.eq.$chatId,receiver_id.eq.$currentUserId)')
+            .order('created_at', ascending: true);
 
-      return response.map<ChatMessage>((json) {
-        json['sender_name'] = senderNames[json['sender_id']] ?? 'Unknown User';
-        return ChatMessage.fromJson(json, currentUserId);
-      }).toList();
+        print('Got ${response.length} messages');
+
+        // Fetch sender names for all unique sender IDs
+        final senderIds = response.map((m) => m['sender_id']).toSet().toList();
+        final senderNames = <String, String>{};
+        
+        for (final senderId in senderIds) {
+          try {
+            final user = await _supabaseService.client
+                .from('user_profiles')
+                .select('full_name')
+                .eq('id', senderId)
+                .single();
+            senderNames[senderId] = user['full_name'] ?? 'Unknown User';
+          } catch (e) {
+            senderNames[senderId] = 'Unknown User';
+          }
+        }
+
+        return response.map<ChatMessage>((json) {
+          json['sender_name'] = senderNames[json['sender_id']] ?? 'Unknown User';
+          return ChatMessage.fromJson(json, currentUserId);
+        }).toList();
+      }
     } catch (e) {
       print('Error getting messages: $e');
       return [];
@@ -131,7 +224,7 @@ class ChatDataSource {
         final uploadedUrls = <String>[];
         
         for (int i = 0; i < imagePaths.length; i++) {
-          final url = await _uploadImageToStorage(imagePaths[i]);
+          final url = await uploadImageToStorage(imagePaths[i]);
           if (url != null) uploadedUrls.add(url);
         }
         
@@ -142,14 +235,14 @@ class ChatDataSource {
         final imagePath = message.text.substring(6);
         
         // Upload image to Supabase Storage
-        mediaUrl = await _uploadImageToStorage(imagePath);
+        mediaUrl = await uploadImageToStorage(imagePath);
         finalMessageText = 'Image';
       } else if (message.text.startsWith('VIDEO:')) {
         messageType = 'video';
         final videoPath = message.text.substring(6);
         
         // Upload video to Supabase Storage
-        mediaUrl = await _uploadVideoToStorage(videoPath);
+        mediaUrl = await uploadVideoToStorage(videoPath);
         finalMessageText = 'Video';
       }
 
@@ -182,7 +275,7 @@ class ChatDataSource {
   }
 
   /// Upload image to Supabase Storage
-  Future<String?> _uploadImageToStorage(String imagePath) async {
+  Future<String?> uploadImageToStorage(String imagePath) async {
     try {
       final file = File(imagePath);
       if (!file.existsSync()) {
@@ -208,16 +301,19 @@ class ChatDataSource {
   }
 
   /// Upload video to Supabase Storage
-  Future<String?> _uploadVideoToStorage(String videoPath) async {
+  Future<String?> uploadVideoToStorage(String videoPath) async {
     try {
+      print('📹 Starting video upload: $videoPath');
       final file = File(videoPath);
       if (!file.existsSync()) {
-        print('Video file does not exist: $videoPath');
+        print('❌ Video file does not exist: $videoPath');
         return null;
       }
 
       final fileName = 'videos/${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+      print('📹 Uploading video as: $fileName');
       final videoBytes = await file.readAsBytes();
+      print('📹 Video size: ${videoBytes.length} bytes');
       
       await _supabaseService.client.storage
           .from('chat-media')
@@ -227,8 +323,10 @@ class ChatDataSource {
           .from('chat-media')
           .getPublicUrl(fileName);
 
+      print('✅ Video uploaded successfully: $publicUrl');
       return publicUrl;
     } catch (e) {
+      print('❌ Error uploading video: $e');
       return null;
     }
   }

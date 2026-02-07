@@ -120,6 +120,12 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
 
+    // Check if this is a group chat
+    final isGroup = _chats.firstWhere(
+      (chat) => chat.receiverUserId == receiverUserId,
+      orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), unreadCount: 0, isGroup: false, receiverUserId: ''),
+    ).isGroup;
+
     final message = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
@@ -136,7 +142,8 @@ class ChatProvider extends ChangeNotifier {
     final chatIndex = _chats.indexWhere((chat) => chat.receiverUserId == receiverUserId);
     if (chatIndex != -1) {
       _chats[chatIndex] = _chats[chatIndex].copyWith(
-        lastMessage: text.startsWith('IMAGES:') ? '${text.split('|||').length} Images' : text,
+        lastMessage: text.startsWith('IMAGES:') ? '${text.split('|||').length} Images' : 
+                     text.startsWith('VIDEO:') ? 'Video' : text,
         lastMessageTime: DateTime.now(),
       );
       _sortChatsByRecent();
@@ -145,8 +152,37 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await sendMessageUseCase(message);
+      if (isGroup) {
+        // Handle video/image for groups
+        String finalMessage = text;
+        String? mediaUrl;
+        
+        if (text.startsWith('VIDEO:')) {
+          print('📹 Group video upload starting...');
+          final videoPath = text.substring(6);
+          mediaUrl = await _chatDataSource.uploadVideoToStorage(videoPath);
+          finalMessage = 'Video';
+          print('📹 Group video uploaded: $mediaUrl');
+        } else if (text.startsWith('IMAGE:')) {
+          final imagePath = text.substring(6);
+          mediaUrl = await _chatDataSource.uploadImageToStorage(imagePath);
+          finalMessage = 'Image';
+        }
+        
+        // Insert into group_messages table
+        await Supabase.instance.client.from('group_messages').insert({
+          'group_id': receiverUserId,
+          'sender_id': currentUserId,
+          'message': finalMessage,
+          'message_type': text.startsWith('VIDEO:') ? 'video' : text.startsWith('IMAGE:') ? 'image' : 'text',
+          'media_url': mediaUrl,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        await sendMessageUseCase(message);
+      }
     } catch (e) {
+      print('Error sending message: $e');
     }
   }
 
@@ -184,18 +220,56 @@ class ChatProvider extends ChangeNotifier {
   // -------------------- CREATE GROUP --------------------
 
   Future<void> createGroup(String groupName, List<String> memberIds) async {
-    final newGroup = Chat(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: groupName,
-      lastMessage: 'Group created',
-      lastMessageTime: DateTime.now(),
-      unreadCount: 0,
-      isGroup: true,
-      receiverUserId: DateTime.now().millisecondsSinceEpoch.toString(),
-    );
-    
-    _chats.insert(0, newGroup);
-    notifyListeners();
+    try {
+      final currentUserId = _authService.currentUserId;
+      if (currentUserId == null) return;
+
+      // Create group in database
+      final response = await Supabase.instance.client
+          .from('groups')
+          .insert({
+            'name': groupName,
+            'created_by': currentUserId,
+            'created_at': DateTime.now().toIso8601String(),
+          })
+          .select('id')
+          .single();
+
+      final groupId = response['id'];
+
+      // Add members to group
+      final members = memberIds.map((memberId) => {
+        'group_id': groupId,
+        'user_id': memberId,
+        'joined_at': DateTime.now().toIso8601String(),
+      }).toList();
+
+      // Add creator as member
+      members.add({
+        'group_id': groupId,
+        'user_id': currentUserId,
+        'joined_at': DateTime.now().toIso8601String(),
+      });
+
+      await Supabase.instance.client.from('group_members').insert(members);
+
+      // Create local chat entry
+      final newGroup = Chat(
+        id: groupId,
+        name: groupName,
+        lastMessage: 'Group created',
+        lastMessageTime: DateTime.now(),
+        unreadCount: 0,
+        isGroup: true,
+        receiverUserId: groupId,
+      );
+      
+      _chats.insert(0, newGroup);
+      notifyListeners();
+    } catch (e) {
+      print('Error creating group: $e');
+      rethrow;
+    }
   }
 
   // -------------------- MESSAGE STATUS --------------------
@@ -258,7 +332,6 @@ class ChatProvider extends ChangeNotifier {
 
   void _handleNewMessage(Map<String, dynamic> data) async {
     final currentUserId = _authService.currentUserId;
-    print('Handling new realtime message: $data');
 
     // Fetch sender name
     String senderName = 'User';

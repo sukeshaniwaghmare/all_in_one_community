@@ -58,12 +58,10 @@ class FCMService {
       _messaging.onTokenRefresh.listen(_storeFCMToken);
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     } catch (e) {
-      print('⚠️ FCM setup skipped: $e');
     }
     
     await _loadBadgeCount();
     
-    print('✅ FCM Service initialized');
   }
 
   static Future<void> _updateFCMToken() async {
@@ -73,67 +71,53 @@ class FCMService {
         await _storeFCMToken(token);
       }
     } catch (e) {
-      print('❌ Error getting FCM token: $e');
     }
   }
 
   static Future<void> _storeFCMToken(String token) async {
     try {
-      print('💾 Storing FCM token: ${token.substring(0, 20)}...');
       final userId = _supabase.auth.currentUser?.id;
       if (userId != null) {
         await _supabase
             .from('user_profiles')
             .update({'fcm_token': token})
             .eq('id', userId);
-        print('✅ FCM token stored for user: $userId');
       } else {
-        print('❌ No user logged in');
+      
       }
     } catch (e) {
-      print('❌ Error storing FCM token: $e');
     }
   }
 
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('📩 Foreground message received!');
-    print('   Title: ${message.notification?.title}');
-    print('   Body: ${message.notification?.body}');
-    print('   Data: ${message.data}');
-    
+  
     final data = message.data;
     final senderId = data['sender_id'];
     final senderName = data['sender_name'] ?? 'Someone';
     final messageText = data['message'] ?? 'New message';
     
-    print('   Current chat user: $_currentChatUserId');
-    print('   Sender ID: $senderId');
+ 
     
     // Don't show if chat is open with this sender
     if (_currentChatUserId == senderId) {
-      print('🚫 Chat open, skipping notification');
       return;
     }
     
     if (senderId != _supabase.auth.currentUser?.id) {
-      print('✅ Showing notification');
       await _showLocalNotification(senderName, messageText, senderId);
       await _incrementBadgeCount();
     } else {
-      print('🚫 Own message, skipping');
     }
   }
 
   static Future<void> _handleNotificationTap(RemoteMessage message) async {
-    print('📱 Notification tapped: ${message.data}');
+
   }
 
   static void _onNotificationTap(NotificationResponse response) {
-    print('📱 Local notification tapped: ${response.payload}');
   }
 
   static Future<void> _showLocalNotification(String title, String body, String senderId) async {
-    print('🔔 Showing local notification: $title - $body');
     await _notifications.show(
       DateTime.now().millisecondsSinceEpoch.remainder(100000),
       title,
@@ -159,7 +143,6 @@ class FCMService {
       ),
       payload: senderId,
     );
-    print('✅ Notification shown');
   }
 
   static Future<void> _incrementBadgeCount() async {
@@ -186,7 +169,6 @@ class FCMService {
 
   static Future<void> showNotification(String title, String body, String senderId) async {
     if (_currentChatUserId == senderId) {
-      print('🚫 Chat open, skipping notification');
       return;
     }
     

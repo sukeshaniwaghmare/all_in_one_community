@@ -397,7 +397,7 @@ class _InfoScreenState extends State<InfoScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const CreateGroupScreen(),
+                  builder: (context) => CreateGroupScreen(preSelectedContact: widget.name),
                 ),
               );
             },
