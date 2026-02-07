@@ -247,24 +247,145 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildImageGrid(BuildContext context, List<String> imagePaths) {
-    return SizedBox(
-      height: 200,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: imagePaths.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: EdgeInsets.only(right: index < imagePaths.length - 1 ? 4 : 0),
-            child: GestureDetector(
-              onTap: () => _openImageGallery(context, imagePaths, index),
+    final count = imagePaths.length;
+    
+    if (count == 1) {
+      return GestureDetector(
+        onTap: () => _openImageGallery(context, imagePaths, 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: _buildImageWidget(imagePaths[0], width: 200, height: 200),
+        ),
+      );
+    }
+    
+    if (count == 2) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => _openImageGallery(context, imagePaths, 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _buildImageWidget(imagePaths[0], width: 130, height: 130),
+            ),
+          ),
+          SizedBox(width: 2),
+          GestureDetector(
+            onTap: () => _openImageGallery(context, imagePaths, 1),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _buildImageWidget(imagePaths[1], width: 130, height: 130),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    if (count == 3) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => _openImageGallery(context, imagePaths, 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _buildImageWidget(imagePaths[0], width: 130, height: 200),
+            ),
+          ),
+          SizedBox(width: 2),
+          Column(
+            children: [
+              GestureDetector(
+                onTap: () => _openImageGallery(context, imagePaths, 1),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _buildImageWidget(imagePaths[1], width: 130, height: 99),
+                ),
+              ),
+              SizedBox(height: 2),
+              GestureDetector(
+                onTap: () => _openImageGallery(context, imagePaths, 2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _buildImageWidget(imagePaths[2], width: 130, height: 99),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+    
+    // 4+ images: Show 2x2 grid with count overlay
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => _openImageGallery(context, imagePaths, 0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: _buildImageWidget(imagePaths[index], width: 150, height: 200),
+                child: _buildImageWidget(imagePaths[0], width: 130, height: 130),
               ),
             ),
-          );
-        },
-      ),
+            SizedBox(width: 2),
+            GestureDetector(
+              onTap: () => _openImageGallery(context, imagePaths, 1),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _buildImageWidget(imagePaths[1], width: 130, height: 130),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => _openImageGallery(context, imagePaths, 2),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _buildImageWidget(imagePaths[2], width: 130, height: 130),
+              ),
+            ),
+            SizedBox(width: 2),
+            GestureDetector(
+              onTap: () => _openImageGallery(context, imagePaths, 3),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Stack(
+                  children: [
+                    _buildImageWidget(imagePaths[3], width: 130, height: 130),
+                    if (count > 4)
+                      Container(
+                        width: 130,
+                        height: 130,
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '+${count - 4}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
