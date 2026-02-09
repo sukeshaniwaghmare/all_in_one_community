@@ -48,12 +48,14 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   String _searchQuery = '';
   Timer? _refreshTimer;
   Map<String, dynamic>? _selectedTheme;
+  String? _avatarUrl;
   
   // ==================== LIFECYCLE: INIT ====================
   @override
   void initState() {
     super.initState();
     _chatProvider = context.read<ChatProvider>();
+    _loadAvatar();
 
     // LOGIC: Set current chat to prevent notifications
     FCMService.setCurrentChat(widget.chat.receiverUserId);
@@ -74,6 +76,41 @@ class _ChatDetailScreenState extends State<ChatScreen> {
       // LOGIC: Clear notification badge
       local_notifications.NotificationService.clearBadge();
     });
+  }
+
+  Future<void> _loadAvatar() async {
+    if (!widget.chat.isGroup) {
+      try {
+        final response = await Supabase.instance.client
+            .from('user_profiles')
+            .select('avatar_url')
+            .eq('full_name', widget.chat.name)
+            .maybeSingle();
+        if (response != null && mounted) {
+          setState(() {
+            _avatarUrl = response['avatar_url'];
+          });
+        }
+      } catch (e) {
+        print('Error loading avatar: $e');
+      }
+    } else {
+      // Load group avatar
+      try {
+        final response = await Supabase.instance.client
+            .from('groups')
+            .select('avatar_url')
+            .eq('id', widget.chat.receiverUserId)
+            .maybeSingle();
+        if (response != null && mounted) {
+          setState(() {
+            _avatarUrl = response['avatar_url'];
+          });
+        }
+      } catch (e) {
+        print('Error loading group avatar: $e');
+      }
+    }
   }
 
   // ==================== UI: BUILD METHOD ====================
@@ -152,10 +189,10 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                     CircleAvatar(
                       radius: 16,
                       backgroundColor: const Color(0xFFDADADA),
-                      backgroundImage: widget.chat.profileImage != null
-                          ? NetworkImage(widget.chat.profileImage!)
+                      backgroundImage: (_avatarUrl != null && _avatarUrl!.startsWith('http'))
+                          ? NetworkImage(_avatarUrl!)
                           : null,
-                      child: widget.chat.profileImage == null
+                      child: (_avatarUrl == null || !_avatarUrl!.startsWith('http'))
                           ? Icon(
                               widget.chat.isGroup ? Icons.group : Icons.person,
                               size: 18,

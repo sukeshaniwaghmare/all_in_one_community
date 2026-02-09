@@ -49,6 +49,7 @@ class _InfoScreenState extends State<InfoScreen> {
   late TextEditingController _descriptionController;
   late String _currentName;
   late String? _currentDescription;
+  String? _avatarUrl;
 
   @override
   void initState() {
@@ -57,6 +58,47 @@ class _InfoScreenState extends State<InfoScreen> {
     _currentDescription = widget.description;
     _nameController = TextEditingController(text: _currentName);
     _descriptionController = TextEditingController(text: _currentDescription ?? '');
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    if (!widget.isGroup) {
+      try {
+        print('🔄 Loading profile data for: $_currentName');
+        final profile = await _fetchUserProfile(_currentName);
+        if (profile != null && mounted) {
+          final avatarUrl = profile['avatar_url'];
+          print('✅ Profile loaded. Avatar URL: $avatarUrl');
+          setState(() {
+            _avatarUrl = avatarUrl;
+          });
+        } else {
+          print('⚠️ No profile found for: $_currentName');
+        }
+      } catch (e) {
+        print('❌ Error loading profile: $e');
+      }
+    } else if (widget.groupId != null) {
+      // Load group avatar
+      try {
+        print('🔄 Loading group avatar for: $_currentName');
+        final groupData = await Supabase.instance.client
+            .from('groups')
+            .select('avatar_url')
+            .eq('id', widget.groupId!)
+            .single();
+        
+        if (mounted) {
+          final avatarUrl = groupData['avatar_url'];
+          print('✅ Group avatar loaded: $avatarUrl');
+          setState(() {
+            _avatarUrl = avatarUrl;
+          });
+        }
+      } catch (e) {
+        print('❌ Error loading group avatar: $e');
+      }
+    }
   }
 
   @override
@@ -208,34 +250,17 @@ class _InfoScreenState extends State<InfoScreen> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          GestureDetector(
-            onTap: _editProfileImage,
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: const Color(0xFFDADADA),
-                  backgroundImage: _profileImage != null 
-                    ? FileImage(File(_profileImage!.path))
-                    : null,
-                  child: _profileImage == null 
-                    ? Icon(widget.isGroup ? Icons.group : Icons.person, size: 40, color: Colors.white) 
-                    : null,
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
+          CircleAvatar(
+            radius: 48,
+            backgroundColor: const Color(0xFFDADADA),
+            backgroundImage: _profileImage != null 
+              ? FileImage(File(_profileImage!.path))
+              : (_avatarUrl != null && _avatarUrl!.startsWith('http'))
+                ? NetworkImage(_avatarUrl!)
+                : null,
+            child: (_profileImage == null && (_avatarUrl == null || !_avatarUrl!.startsWith('http')))
+              ? Icon(widget.isGroup ? Icons.group : Icons.person, size: 40, color: Colors.white) 
+              : null,
           ),
           const SizedBox(height: 12),
           if (_isEditMode)
@@ -583,7 +608,7 @@ class _InfoScreenState extends State<InfoScreen> {
           ),
           const Divider(height: 1),
           _memberTile('You', isAdmin: true),
-          ...members.map((name) => _memberTile(name)),
+          ...members.map((name) => _memberTileWithAvatar(name)),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.person_add, color: Color(0xFF128C7E)),
@@ -671,6 +696,44 @@ class _InfoScreenState extends State<InfoScreen> {
         style: TextStyle(color: isAdmin ? const Color(0xFF128C7E) : Colors.grey, fontSize: 12),
       ),
     );
+  }
+
+  Widget _memberTileWithAvatar(String name) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _fetchUserProfile(name),
+      builder: (context, snapshot) {
+        final avatarUrl = snapshot.data?['avatar_url'];
+        final bio = snapshot.data?['bio'] ?? 'Hey there!';
+        
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: const Color(0xFFDADADA),
+            backgroundImage: (avatarUrl != null && avatarUrl.startsWith('http')) ? NetworkImage(avatarUrl) : null,
+            child: (avatarUrl == null || !avatarUrl.startsWith('http')) ? const Icon(Icons.person, color: Colors.white, size: 20) : null,
+          ),
+          title: Text(name),
+          subtitle: Text(bio, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> _fetchUserProfile(String fullName) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('user_profiles')
+          .select('avatar_url, bio')
+          .eq('full_name', fullName)
+          .maybeSingle();
+      
+      print('🔍 Fetching profile for: $fullName');
+      print('📸 Avatar URL: ${response?['avatar_url']}');
+      
+      return response;
+    } catch (e) {
+      print('❌ Error fetching profile: $e');
+      return null;
+    }
   }
 
   void _showDeleteDialog() {
@@ -836,15 +899,23 @@ class _InfoScreenState extends State<InfoScreen> {
         final groupId = result['groupId'];
         
         if (groupId != null) {
-          // Update in Supabase
-          await Supabase.instance.client
+          // Reload group data from Supabase to get updated avatar
+          final groupData = await Supabase.instance.client
               .from('groups')
-              .update({
-                'name': newName,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', groupId);
-          print('✅ Group name updated in Supabase: $newName');
+              .select('name, avatar_url')
+              .eq('id', groupId)
+              .single();
+          
+          print('✅ Group data reloaded: $groupData');
+          
+          // Update local state with new avatar
+          setState(() {
+            _currentName = newName;
+            _currentDescription = newDescription;
+            _avatarUrl = groupData['avatar_url'];
+            _nameController.text = newName;
+            _descriptionController.text = newDescription ?? '';
+          });
         }
         
         // Update in ChatProvider
@@ -854,14 +925,6 @@ class _InfoScreenState extends State<InfoScreen> {
         // Update in CommunityProvider
         final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
         communityProvider.updateContactName(_currentName, newName);
-        
-        // Update local state
-        setState(() {
-          _currentName = newName;
-          _currentDescription = newDescription;
-          _nameController.text = newName;
-          _descriptionController.text = newDescription ?? '';
-        });
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Group info updated')),

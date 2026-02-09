@@ -129,7 +129,8 @@ class Chat {
   factory Chat.fromUserProfile(Map<String, dynamic> json) {
     final userId = json['id'];
     final fullName = json['full_name'];
-    print('Creating chat - ID: $userId, Full Name: $fullName');
+    final avatarUrl = json['avatar_url'];
+    print('Creating chat - ID: $userId, Full Name: $fullName, Avatar: $avatarUrl');
     
     // Ensure we use the actual UUID ID, not username
     return Chat(

@@ -32,6 +32,23 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateAvatarFromPath(String imagePath) async {
+    if (_user == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _repository.updateAvatar(_user!.id, imagePath);
+      await loadUser();
+    } catch (e) {
+      _error = e.toString();
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> updateProfileImage() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
@@ -42,7 +59,7 @@ class ProfileProvider extends ChangeNotifier {
 
       try {
         await _repository.updateAvatar(_user!.id, image.path);
-        _user = _user!.copyWith(avatarUrl: image.path);
+        await loadUser(); // Reload user to get updated avatar URL
       } catch (e) {
         _error = e.toString();
       }

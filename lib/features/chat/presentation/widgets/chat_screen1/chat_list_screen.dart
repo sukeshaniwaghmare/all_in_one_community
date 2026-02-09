@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../community/domain/community_type.dart';
 import '../../../provider/chat_provider.dart';
 import 'package:provider/provider.dart';
@@ -102,6 +104,8 @@ class _UserProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarUrl = chat.profileImage;
+    
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -111,16 +115,30 @@ class _UserProfileTile extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundImage: chat.profileImage != null 
-                  ? NetworkImage(chat.profileImage!) 
-                  : null,
               backgroundColor: _getAvatarColor(chat.name),
-              child: chat.profileImage == null 
-                  ? Text(
+              child: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        avatarUrl,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Text(
+                            chat.name[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 20),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white));
+                        },
+                      ),
+                    )
+                  : Text(
                       chat.name[0].toUpperCase(),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 20),
-                    )
-                  : null,
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(

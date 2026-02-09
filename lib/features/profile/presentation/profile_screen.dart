@@ -137,13 +137,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                         children: [
                           CircleAvatar(
                             radius: 45,
-                            backgroundImage: user.avatarUrl != null
-                                ? (user.avatarUrl!.startsWith('http')
-                                    ? NetworkImage(user.avatarUrl!) as ImageProvider
-                                    : FileImage(File(user.avatarUrl!)))
+                            backgroundImage: (user.avatarUrl != null && user.avatarUrl!.startsWith('http'))
+                                ? NetworkImage(user.avatarUrl!)
                                 : null,
                             backgroundColor: Colors.white,
-                            child: user.avatarUrl == null
+                            child: (user.avatarUrl == null || !user.avatarUrl!.startsWith('http'))
                                 ? Text(
                                     user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
                                     style: TextStyle(

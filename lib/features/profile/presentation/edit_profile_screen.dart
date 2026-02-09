@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../provider/profile_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -16,6 +18,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _locationController;
   late TextEditingController _bioController;
+  XFile? _selectedImage;
 
   @override
   void initState() {
@@ -58,6 +61,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       body: ListView(
         children: [
+          const SizedBox(height: 16),
+
+          _avatarSection(),
+
           const SizedBox(height: 16),
 
           _section(
@@ -206,14 +213,114 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return const Divider(height: 1, thickness: 1);
   }
 
-  void _saveProfile() {
-    context.read<ProfileProvider>().updateProfile(
-          fullName: _nameController.text,
-          phone: _phoneController.text,
-          email: _emailController.text,
-          location: _locationController.text,
-          bio: _bioController.text,
-        );
-    Navigator.pop(context);
+  Widget _avatarSection() {
+    final user = context.watch<ProfileProvider>().user;
+    final avatarUrl = user?.avatarUrl;
+    
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _pickImage,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
+                  backgroundImage: _selectedImage != null
+                      ? FileImage(File(_selectedImage!.path))
+                      : (avatarUrl != null && avatarUrl.startsWith('http'))
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                  child: (_selectedImage == null && (avatarUrl == null || !avatarUrl.startsWith('http')))
+                      ? Icon(Icons.person, size: 60, color: AppTheme.primaryColor)
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tap to change profile photo',
+            style: TextStyle(color: AppTheme.primaryColor, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppTheme.primaryColor),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromSource(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppTheme.primaryColor),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromSource(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImageFromSource(ImageSource source) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: source, maxWidth: 800, maxHeight: 800, imageQuality: 80);
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+      });
+    }
+  }
+
+  void _saveProfile() async {
+    final provider = context.read<ProfileProvider>();
+    
+    // Upload avatar if selected
+    if (_selectedImage != null) {
+      await provider.updateAvatarFromPath(_selectedImage!.path);
+    }
+    
+    // Update other fields
+    await provider.updateProfile(
+      fullName: _nameController.text,
+      phone: _phoneController.text,
+      email: _emailController.text,
+      location: _locationController.text,
+      bio: _bioController.text,
+    );
+    
+    if (mounted) Navigator.pop(context);
   }
 }

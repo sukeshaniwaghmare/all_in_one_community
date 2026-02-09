@@ -164,11 +164,9 @@ class ChatProvider extends ChangeNotifier {
         String? mediaUrl;
         
         if (text.startsWith('VIDEO:')) {
-          print('📹 Group video upload starting...');
           final videoPath = text.substring(6);
           mediaUrl = await _chatDataSource.uploadVideoToStorage(videoPath);
           finalMessage = 'Video';
-          print('📹 Group video uploaded: $mediaUrl');
         } else if (text.startsWith('IMAGE:')) {
           final imagePath = text.substring(6);
           mediaUrl = await _chatDataSource.uploadImageToStorage(imagePath);
@@ -260,21 +258,14 @@ class ChatProvider extends ChangeNotifier {
 
       final groupId = response['id'];
 
-      // Add members to group
-      final members = memberIds.map((memberId) => {
+      // Add members to group (ensure no duplicates)
+      final uniqueMemberIds = {...memberIds, currentUserId}.toList();
+      final members = uniqueMemberIds.map((memberId) => {
         'group_id': groupId,
         'user_id': memberId,
         'group_name': groupName,
         'joined_at': DateTime.now().toIso8601String(),
       }).toList();
-
-      // Add creator as member
-      members.add({
-        'group_id': groupId,
-        'user_id': currentUserId,
-        'group_name': groupName,
-        'joined_at': DateTime.now().toIso8601String(),
-      });
 
       await Supabase.instance.client.from('group_members').insert(members);
 
@@ -317,7 +308,6 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> deleteMessage(String messageId) async {
     try {
-      print('🗑️ Deleting message ID: $messageId');
       
       // Check if current chat is a group
       final isGroup = _currentReceiverUserId != null && 

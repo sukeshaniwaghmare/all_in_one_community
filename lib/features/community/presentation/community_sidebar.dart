@@ -85,10 +85,11 @@ class CommunityDrawer extends StatelessWidget {
                     CircleAvatar(
                       radius: 24,
                       backgroundColor: Colors.white24,
-                      child: Text(
+                      backgroundImage: user?.avatarUrl != null ? (user!.avatarUrl!.startsWith('http') ? NetworkImage(user.avatarUrl!) : FileImage(File(user.avatarUrl!)) as ImageProvider) : null,
+                      child: user?.avatarUrl == null ? Text(
                         user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'U',
                         style: const TextStyle(fontSize: 18, color: Colors.white),
-                      ),
+                      ) : null,
                     ),
                     Consumer<ThemeProvider>(
                       builder: (context, themeProvider, _) {
@@ -133,10 +134,11 @@ class CommunityDrawer extends StatelessWidget {
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: Colors.blueGrey,
-            child: Text(
+            backgroundImage: user?.avatarUrl != null ? (user!.avatarUrl!.startsWith('http') ? NetworkImage(user.avatarUrl!) : FileImage(File(user.avatarUrl!)) as ImageProvider) : null,
+            child: user?.avatarUrl == null ? Text(
               user?.fullName.isNotEmpty == true ? user!.fullName[0].toUpperCase() : 'U',
               style: const TextStyle(color: Colors.white),
-            ),
+            ) : null,
           ),
           title: Text(
             user?.fullName ?? 'User',

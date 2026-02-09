@@ -63,8 +63,13 @@ class ChatDataSource {
             .select('group_id')
             .eq('user_id', currentUserId);
         
-        for (var groupMember in groupMembersResponse) {
-          final groupId = groupMember['group_id'];
+        // Get unique group IDs to prevent duplicates
+        final uniqueGroupIds = groupMembersResponse
+            .map((gm) => gm['group_id'] as String)
+            .toSet()
+            .toList();
+        
+        for (var groupId in uniqueGroupIds) {
           
           // Get group details
           final groupResponse = await _supabaseService.client
@@ -91,6 +96,7 @@ class ChatDataSource {
             unreadCount: 0,
             isGroup: true,
             receiverUserId: groupId,
+            profileImage: groupResponse['avatar_url'],
           );
           
           chats.add(groupChat);

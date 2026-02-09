@@ -484,6 +484,8 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   Widget _buildChatsTab(List<ChatItem> chats) {
+    final chatProvider = Provider.of<chat.ChatProvider>(context);
+    
     return Column(
       children: [
         GestureDetector(
@@ -568,10 +570,25 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                         _openChat(context, chatItem);
                       },
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: chatItem.avatarColor,
-                          child: Text(chatItem.initials),
-                        ),
+                        leading: chatProvider.chats[i].profileImage != null && chatProvider.chats[i].profileImage!.isNotEmpty
+                            ? CircleAvatar(
+                                backgroundColor: chatItem.avatarColor,
+                                child: ClipOval(
+                                  child: Image.network(
+                                    chatProvider.chats[i].profileImage!,
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Text(chatItem.initials);
+                                    },
+                                  ),
+                                ),
+                              )
+                            : CircleAvatar(
+                                backgroundColor: chatItem.avatarColor,
+                                child: Text(chatItem.initials),
+                              ),
                         title: Text(chatItem.name),
                         subtitle: Text(chatItem.preview, maxLines: 1),
                         trailing: chatItem.unread > 0

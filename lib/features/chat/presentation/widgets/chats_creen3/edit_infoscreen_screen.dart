@@ -147,9 +147,11 @@ class _EditInfoScreenState extends State<EditInfoScreen> {
     final newDescription = _descriptionController.text.trim();
     
     if (newName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Group name cannot be empty')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group name cannot be empty')),
+        );
+      }
       return;
     }
     
@@ -159,15 +161,40 @@ class _EditInfoScreenState extends State<EditInfoScreen> {
     print('   New Name: $newName');
     
     try {
+      String? avatarUrl;
+      
+      // Upload avatar if selected
+      if (_profileImage != null) {
+        print('📤 Uploading avatar...');
+        final file = File(_profileImage!.path);
+        final fileName = 'groups/${widget.groupId}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        
+        await Supabase.instance.client.storage
+            .from('chat-media')
+            .upload(fileName, file);
+        
+        avatarUrl = Supabase.instance.client.storage
+            .from('chat-media')
+            .getPublicUrl(fileName);
+        
+        print('✅ Avatar uploaded: $avatarUrl');
+      }
+      
       if (widget.groupId != null && widget.groupId!.isNotEmpty) {
         print('🔄 Updating group in Supabase...');
         
+        final updateData = {
+          'name': newName,
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+        
+        if (avatarUrl != null) {
+          updateData['avatar_url'] = avatarUrl;
+        }
+        
         final response = await Supabase.instance.client
             .from('groups')
-            .update({
-              'name': newName,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
+            .update(updateData)
             .eq('id', widget.groupId!)
             .select();
         
@@ -177,12 +204,20 @@ class _EditInfoScreenState extends State<EditInfoScreen> {
       }
     } catch (e) {
       print('❌ Error updating Supabase: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving changes: $e')),
+        );
+      }
+      return;
     }
     
-    Navigator.pop(context, {
-      'name': newName,
-      'description': newDescription,
-      'groupId': widget.groupId,
-    });
+    if (mounted) {
+      Navigator.pop(context, {
+        'name': newName,
+        'description': newDescription,
+        'groupId': widget.groupId,
+      });
+    }
   }
 }
