@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' as fc;
-import '../models/contact_model.dart'; // Your own Contact model
+import '../models/contact_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../chat/provider/chat_provider.dart' as chat;
+import '../../chat/data/models/chat_model.dart' as chat;
+import '../../chat/presentation/widgets/chat_screen2/chat_screen.dart';
 
 class ContactProvider extends ChangeNotifier {
   List<Contact> _contacts = [];
@@ -41,7 +46,6 @@ class ContactProvider extends ChangeNotifier {
         }
       }
 
-      // Try getting all contacts without properties first to check count
       final hasPermission = await fc.FlutterContacts.requestPermission();
       if (!hasPermission) {
         debugPrint('Contacts permission denied');
@@ -50,11 +54,13 @@ class ContactProvider extends ChangeNotifier {
         return;
       }
 
-      // Get all contacts with properties
+      // Fetch app users from Supabase
+      final appUsers = await _fetchAppUsers();
+      debugPrint('App users map has ${appUsers.length} entries');
+
       final phoneContacts = await fc.FlutterContacts.getContacts(
         withProperties: true,
         deduplicateProperties: true,
-      
       );
 
       debugPrint('Found ${phoneContacts.length} contacts from device');
@@ -65,23 +71,38 @@ class ContactProvider extends ChangeNotifier {
       for (final c in phoneContacts) {
         if (c.phones.isEmpty) continue;
 
-        // Get primary phone or first available
         final phoneObj = c.phones.first;
         String phone = _normalizePhone(phoneObj.number);
         if (phone.isEmpty) continue;
 
-        // Create a unique ID using contact ID
         final contactId = c.id;
         
-        // Skip duplicates
         if (uniqueContactIds.contains(contactId)) continue;
         uniqueContactIds.add(contactId);
 
+        // For now, mark all contacts as non-app users with invite button
+        // You can later implement phone matching logic
+        
         loadedContacts.add(Contact(
           id: contactId,
           name: c.displayName.isEmpty ? 'Unknown' : c.displayName,
           phoneNumber: phone,
-          isAppUser: _checkIfAppUser(phone),
+          isAppUser: false,
+          profileImage: null,
+        ));
+      }
+
+      // Add all Supabase users as app users at the top
+      for (var entry in appUsers.entries) {
+        final userId = entry.key;
+        final userData = entry.value;
+        
+        loadedContacts.insert(0, Contact(
+          id: userId,
+          name: userData['full_name'] ?? 'Unknown',
+          phoneNumber: '',
+          isAppUser: true,
+          profileImage: userData['avatar_url'],
         ));
       }
 
@@ -95,6 +116,28 @@ class ContactProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _fetchAppUsers() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('user_profiles')
+          .select('id, full_name, avatar_url');
+      
+      debugPrint('Fetched ${response.length} app users from Supabase');
+      
+      final Map<String, Map<String, dynamic>> appUsersMap = {};
+      for (var user in response) {
+        final userId = user['id'];
+        if (userId != null) {
+          appUsersMap[userId] = user;
+        }
+      }
+      return appUsersMap;
+    } catch (e) {
+      debugPrint('Error fetching app users: $e');
+      return {};
+    }
   }
 
   String _normalizePhone(String phone) {
@@ -118,13 +161,7 @@ class ContactProvider extends ChangeNotifier {
     return normalized;
   }
 
-  bool _checkIfAppUser(String phoneNumber) {
-    // TODO: Replace with real logic checking app users
-    // For now, check against a hardcoded list or implement API call
-    return false;
-  }
-
-  Future<void> inviteContact(Contact contact) async {
+Future<void> inviteContact(Contact contact) async {
     try {
       await Future.delayed(const Duration(milliseconds: 200));
       debugPrint('Invited ${contact.name} (${contact.phoneNumber})');
@@ -167,10 +204,25 @@ class ContactProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startChat(Contact contact) async {
+  Future<void> startChat(Contact contact, BuildContext context) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      debugPrint('Starting chat with ${contact.name}');
+      // Create chat object
+      final newChat = chat.Chat(
+        id: contact.id,
+        name: contact.name,
+        lastMessage: '',
+        lastMessageTime: DateTime.now(),
+        receiverUserId: contact.id,
+        profileImage: contact.profileImage,
+      );
+      
+      // Navigate to chat screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(chat: newChat as dynamic),
+        ),
+      );
     } catch (e) {
       debugPrint('Error starting chat: $e');
     }

@@ -111,16 +111,22 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   Widget _buildContactTile(Contact contact, ContactProvider provider) {
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-        child: Text(
-          contact.name[0].toUpperCase(),
-          style: const TextStyle(
-            color: AppTheme.primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      leading: contact.profileImage != null && contact.profileImage!.isNotEmpty
+          ? CircleAvatar(
+              backgroundImage: NetworkImage(contact.profileImage!),
+              onBackgroundImageError: (_, __) {},
+              child: null,
+            )
+          : CircleAvatar(
+              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+              child: Text(
+                contact.name[0].toUpperCase(),
+                style: const TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
       title: Text(
         contact.name,
         style: const TextStyle(fontWeight: FontWeight.w500),
@@ -132,7 +138,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       trailing: contact.isAppUser
           ? IconButton(
               icon: const Icon(Icons.chat, color: AppTheme.primaryColor),
-              onPressed: () => provider.startChat(contact),
+              onPressed: () => provider.startChat(contact, context),
             )
           : TextButton(
               onPressed: () => _showInviteDialog(contact, provider),
@@ -146,7 +152,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             ),
       onTap: () {
         if (contact.isAppUser) {
-          provider.startChat(contact);
+          provider.startChat(contact, context);
         } else {
           _showInviteDialog(contact, provider);
         }
