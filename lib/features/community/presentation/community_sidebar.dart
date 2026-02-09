@@ -7,7 +7,7 @@ import '../../profile/provider/profile_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../calls/presentation/calls_screen.dart';
-import '../../contacts/presentation/contacts_screen.dart';
+import '../../contacts/presentation/select_contacts_screen.dart';
 
 class CommunityDrawer extends StatelessWidget {
   const CommunityDrawer({super.key});

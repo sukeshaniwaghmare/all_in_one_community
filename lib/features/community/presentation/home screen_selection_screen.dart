@@ -8,7 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../chat/data/models/chat_model.dart';
 import '../../chat/provider/chat_provider.dart' as chat;
 import '../../calls/presentation/calls_screen.dart';
-import '../../contacts/presentation/contacts_screen.dart';
+import '../../contacts/presentation/select_contacts_screen.dart';
 import '../../chat/presentation/screens_options/settings_screen.dart';
 import '../../chat/presentation/archived_chats_screen.dart';
 import 'package:image_picker/image_picker.dart';
@@ -255,11 +255,12 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
 
           // FILTER CHIPS
           if (_currentTabIndex == 0)
-            SizedBox(
-              height: 30,
+            Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
                   _buildFilterChip('All'),
                   _buildFilterChip('Unread'),
@@ -402,46 +403,60 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   Widget _buildFilterChip(String label) {
+    final isSelected = _selectedFilter == label;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: FilterChip(
-        label: Text(label, style: const TextStyle(fontSize: 12)),
-        selected: _selectedFilter == label,
-        onSelected: (_) {
-          setState(() => _selectedFilter = label);
-        },
-      ),
-    );
-  }
-
-  Widget _buildAddListButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
-        onTap: () {
-          // Add new list functionality
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('New list feature coming soon')),
-          );
-        },
+        onTap: () => setState(() => _selectedFilter = label),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
+            color: isSelected ? AppTheme.primaryColor.withOpacity(0.15) : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, size: 16, color: Colors.grey),
-              SizedBox(width: 4),
-              Text('New list', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: isSelected ? AppTheme.primaryColor : Colors.black87,
+              fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+            ),
           ),
         ),
       ),
     );
   }
+
+
+
+  Widget _buildAddListButton() {
+    return GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('New list feature coming soon')),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 16, color: Colors.grey.shade700),
+            const SizedBox(width: 4),
+            Text(
+              'New list',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   List<ChatItem> _getFilteredChats(List<ChatItem> chats) {
     switch (_selectedFilter) {

@@ -4,7 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import 'call_info_screen.dart';
 import 'contact_selection_screen.dart';
 import '../provider/call_provider.dart';
-import '../../contacts/presentation/contacts_screen.dart';
+import '../../contacts/presentation/select_contacts_screen.dart';
 
 class CallsScreen extends StatefulWidget {
   const CallsScreen({super.key});

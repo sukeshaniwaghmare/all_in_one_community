@@ -7,7 +7,7 @@ import '../../notifications/presentation/notification_screen.dart';
 import '../../camera/presentation/camera_screen.dart';
 import '../../search/presentation/search_screen.dart';
 import '../../broadcast/presentation/broadcast_screen.dart';
-import '../../contacts/presentation/contacts_screen.dart';
+import '../../contacts/presentation/select_contacts_screen.dart';
 import '../../media/presentation/media_viewer_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
