@@ -64,24 +64,16 @@ class _InfoScreenState extends State<InfoScreen> {
   Future<void> _loadProfileData() async {
     if (!widget.isGroup) {
       try {
-        print('🔄 Loading profile data for: $_currentName');
         final profile = await _fetchUserProfile(_currentName);
         if (profile != null && mounted) {
-          final avatarUrl = profile['avatar_url'];
-          print('✅ Profile loaded. Avatar URL: $avatarUrl');
           setState(() {
-            _avatarUrl = avatarUrl;
+            _avatarUrl = profile['avatar_url'];
           });
-        } else {
-          print('⚠️ No profile found for: $_currentName');
         }
-      } catch (e) {
-        print('❌ Error loading profile: $e');
-      }
+      } catch (e) {}
     } else if (widget.groupId != null) {
       // Load group avatar
       try {
-        print('🔄 Loading group avatar for: $_currentName');
         final groupData = await Supabase.instance.client
             .from('groups')
             .select('avatar_url')
@@ -90,13 +82,11 @@ class _InfoScreenState extends State<InfoScreen> {
         
         if (mounted) {
           final avatarUrl = groupData['avatar_url'];
-          print('✅ Group avatar loaded: $avatarUrl');
           setState(() {
             _avatarUrl = avatarUrl;
           });
         }
       } catch (e) {
-        print('❌ Error loading group avatar: $e');
       }
     }
   }
@@ -365,7 +355,7 @@ class _InfoScreenState extends State<InfoScreen> {
     );
   }
 
-  // 🔹 Settings list
+  //  Settings list
   Widget _settings() {
     return Container(
       color: Colors.white,
@@ -387,13 +377,12 @@ class _InfoScreenState extends State<InfoScreen> {
           const Divider(height: 1),
           GestureDetector(
             onTap: () {
-              print('Media visibility tapped with GestureDetector!');
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => MediaScreen(
                     chatName: widget.name,
-                    receiverUserId: 'temp_user_id', // TODO: Get actual receiverUserId
+                    receiverUserId: 'temp_user_id',
                   ),
                 ),
               );
@@ -595,28 +584,41 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   Widget _membersSection() {
-    final members = Provider.of<CommunityProvider>(context, listen: false).getGroupMembers(widget.name);
-    final totalMembers = members.length + 1;
+    if (widget.groupId == null) return const SizedBox.shrink();
     
-    return Container(
-      color: Colors.white,
-      child: Column(
-        children: [
-          ListTile(
-            title: Text('$totalMembers members'),
-            trailing: const Icon(Icons.search, color: Colors.grey),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchGroupMembers(widget.groupId!),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        final members = snapshot.data!;
+        
+        return Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              ListTile(
+                title: Text('${members.length} members'),
+                trailing: const Icon(Icons.search, color: Colors.grey),
+              ),
+              const Divider(height: 1),
+              ...members.map((member) => _memberTileFromData(member)),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.person_add, color: Color(0xFF128C7E)),
+                title: const Text('Add participant', style: TextStyle(color: Color(0xFF128C7E))),
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add participant functionality'))),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          _memberTile('You', isAdmin: true),
-          ...members.map((name) => _memberTileWithAvatar(name)),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.person_add, color: Color(0xFF128C7E)),
-            title: const Text('Add participant', style: TextStyle(color: Color(0xFF128C7E))),
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add participant functionality'))),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -698,24 +700,75 @@ class _InfoScreenState extends State<InfoScreen> {
     );
   }
 
-  Widget _memberTileWithAvatar(String name) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _fetchUserProfile(name),
-      builder: (context, snapshot) {
-        final avatarUrl = snapshot.data?['avatar_url'];
-        final bio = snapshot.data?['bio'] ?? 'Hey there!';
-        
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFFDADADA),
-            backgroundImage: (avatarUrl != null && avatarUrl.startsWith('http')) ? NetworkImage(avatarUrl) : null,
-            child: (avatarUrl == null || !avatarUrl.startsWith('http')) ? const Icon(Icons.person, color: Colors.white, size: 20) : null,
-          ),
-          title: Text(name),
-          subtitle: Text(bio, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        );
-      },
+  Widget _memberTileFromData(Map<String, dynamic> member) {
+    final fullName = member['full_name'] ?? 'Unknown';
+    final avatarUrl = member['avatar_url'];
+    final bio = member['bio'] ?? 'Hey there!';
+    final isAdmin = member['is_admin'] ?? false;
+    final isCurrentUser = member['is_current_user'] ?? false;
+    
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: const Color(0xFFDADADA),
+        backgroundImage: (avatarUrl != null && avatarUrl.startsWith('http')) ? NetworkImage(avatarUrl) : null,
+        child: (avatarUrl == null || !avatarUrl.startsWith('http')) ? const Icon(Icons.person, color: Colors.white, size: 20) : null,
+      ),
+      title: Text(isCurrentUser ? 'You' : fullName),
+      subtitle: Text(
+        isAdmin ? 'Group admin' : bio,
+        style: TextStyle(color: isAdmin ? const Color(0xFF128C7E) : Colors.grey, fontSize: 12),
+      ),
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchGroupMembers(String groupId) async {
+    try {
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      
+      final response = await Supabase.instance.client
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupId);
+      
+      final List<Map<String, dynamic>> membersWithProfiles = [];
+      
+      for (var member in response) {
+        final userId = member['user_id'];
+        final profile = await Supabase.instance.client
+            .from('user_profiles')
+            .select('full_name, avatar_url, bio')
+            .eq('id', userId)
+            .maybeSingle();
+        
+        if (profile != null) {
+          final groupData = await Supabase.instance.client
+              .from('groups')
+              .select('created_by')
+              .eq('id', groupId)
+              .single();
+          
+          membersWithProfiles.add({
+            'full_name': profile['full_name'],
+            'avatar_url': profile['avatar_url'],
+            'bio': profile['bio'],
+            'is_admin': groupData['created_by'] == userId,
+            'is_current_user': userId == currentUserId,
+          });
+        }
+      }
+      
+      membersWithProfiles.sort((a, b) {
+        if (a['is_current_user']) return -1;
+        if (b['is_current_user']) return 1;
+        if (a['is_admin'] && !b['is_admin']) return -1;
+        if (!a['is_admin'] && b['is_admin']) return 1;
+        return 0;
+      });
+      
+      return membersWithProfiles;
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>?> _fetchUserProfile(String fullName) async {
@@ -725,13 +778,8 @@ class _InfoScreenState extends State<InfoScreen> {
           .select('avatar_url, bio')
           .eq('full_name', fullName)
           .maybeSingle();
-      
-      print('🔍 Fetching profile for: $fullName');
-      print('📸 Avatar URL: ${response?['avatar_url']}');
-      
       return response;
     } catch (e) {
-      print('❌ Error fetching profile: $e');
       return null;
     }
   }
@@ -808,13 +856,9 @@ class _InfoScreenState extends State<InfoScreen> {
         setState(() {
           _profileImage = pickedFile;
         });
-        // Save to provider so it appears in chat list
         _saveProfileImage(pickedFile.path);
-        print('Image selected: ${pickedFile.path}');
       }
-    } catch (e) {
-      print('Error picking image: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _pickImageFromCamera() async {
@@ -831,13 +875,9 @@ class _InfoScreenState extends State<InfoScreen> {
         setState(() {
           _profileImage = pickedFile;
         });
-        // Save to provider so it appears in chat list
         _saveProfileImage(pickedFile.path);
-        print('Image captured: ${pickedFile.path}');
       }
-    } catch (e) {
-      print('Error capturing image: $e');
-    }
+    } catch (e) {}
   }
 
   void _shareContact() {
@@ -880,7 +920,6 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   void _editContact() async {
-    print('Edit contact tapped for: $_currentName');
     try {
       final result = await Navigator.of(context).push(
         MaterialPageRoute(
@@ -892,7 +931,6 @@ class _InfoScreenState extends State<InfoScreen> {
         ),
       );
       
-      print('Returned from EditInfoScreen with result: $result');
       if (result != null && result is Map<String, String>) {
         final newName = result['name']!;
         final newDescription = result['description'];
@@ -906,9 +944,6 @@ class _InfoScreenState extends State<InfoScreen> {
               .eq('id', groupId)
               .single();
           
-          print('✅ Group data reloaded: $groupData');
-          
-          // Update local state with new avatar
           setState(() {
             _currentName = newName;
             _currentDescription = newDescription;
@@ -931,9 +966,8 @@ class _InfoScreenState extends State<InfoScreen> {
         );
       }
     } catch (e) {
-      print('❌ Error updating group: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating group: $e')),
+        const SnackBar(content: Text('Error updating group')),
       );
     }
   }
@@ -941,9 +975,7 @@ class _InfoScreenState extends State<InfoScreen> {
  
 
   void _saveProfileImage(String imagePath) {
-    // For now, just store locally. You can extend this later to save to providers
-    // when the updateProfileImage methods are implemented in the providers
-    print('Profile image saved: $imagePath');
+    // Store locally - extend later to save to providers
   }
 
   void _searchInChat() {

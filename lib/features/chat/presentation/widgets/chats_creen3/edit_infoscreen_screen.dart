@@ -155,17 +155,13 @@ class _EditInfoScreenState extends State<EditInfoScreen> {
       return;
     }
     
-    print('📝 Saving changes...');
-    print('   Group ID: ${widget.groupId}');
-    print('   Old Name: ${widget.groupName}');
-    print('   New Name: $newName');
+ 
     
     try {
       String? avatarUrl;
       
       // Upload avatar if selected
       if (_profileImage != null) {
-        print('📤 Uploading avatar...');
         final file = File(_profileImage!.path);
         final fileName = 'groups/${widget.groupId}/${DateTime.now().millisecondsSinceEpoch}.jpg';
         
@@ -177,11 +173,9 @@ class _EditInfoScreenState extends State<EditInfoScreen> {
             .from('chat-media')
             .getPublicUrl(fileName);
         
-        print('✅ Avatar uploaded: $avatarUrl');
       }
       
       if (widget.groupId != null && widget.groupId!.isNotEmpty) {
-        print('🔄 Updating group in Supabase...');
         
         final updateData = {
           'name': newName,
@@ -198,12 +192,9 @@ class _EditInfoScreenState extends State<EditInfoScreen> {
             .eq('id', widget.groupId!)
             .select();
         
-        print('✅ Supabase response: $response');
       } else {
-        print('⚠️ No valid groupId provided: ${widget.groupId}');
       }
     } catch (e) {
-      print('❌ Error updating Supabase: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving changes: $e')),
