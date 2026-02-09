@@ -570,25 +570,32 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                         _openChat(context, chatItem);
                       },
                       child: ListTile(
-                        leading: chatProvider.chats[i].profileImage != null && chatProvider.chats[i].profileImage!.isNotEmpty
-                            ? CircleAvatar(
-                                backgroundColor: chatItem.avatarColor,
-                                child: ClipOval(
-                                  child: Image.network(
-                                    chatProvider.chats[i].profileImage!,
-                                    width: 40,
-                                    height: 40,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Text(chatItem.initials);
-                                    },
+                        leading: GestureDetector(
+                          onTap: () {
+                            if (chatProvider.chats[i].profileImage != null && chatProvider.chats[i].profileImage!.isNotEmpty) {
+                              _showProfileImage(context, chatProvider.chats[i].profileImage!, chatItem.name);
+                            }
+                          },
+                          child: chatProvider.chats[i].profileImage != null && chatProvider.chats[i].profileImage!.isNotEmpty
+                              ? CircleAvatar(
+                                  backgroundColor: chatItem.avatarColor,
+                                  child: ClipOval(
+                                    child: Image.network(
+                                      chatProvider.chats[i].profileImage!,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Text(chatItem.initials);
+                                      },
+                                    ),
                                   ),
+                                )
+                              : CircleAvatar(
+                                  backgroundColor: chatItem.avatarColor,
+                                  child: Text(chatItem.initials),
                                 ),
-                              )
-                            : CircleAvatar(
-                                backgroundColor: chatItem.avatarColor,
-                                child: Text(chatItem.initials),
-                              ),
+                        ),
                         title: Text(chatItem.name),
                         subtitle: Text(chatItem.preview, maxLines: 1),
                         trailing: chatItem.unread > 0
@@ -707,6 +714,59 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       ),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: Text(time, style: const TextStyle(color: Colors.grey)),
+    );
+  }
+
+  void _showProfileImage(BuildContext context, String imageUrl, String name) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: InteractiveViewer(
+                child: Image.network(imageUrl, fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildActionButton(Icons.message, AppTheme.primaryColor),
+                    _buildActionButton(Icons.call, AppTheme.primaryColor),
+                    _buildActionButton(Icons.videocam, AppTheme.primaryColor),
+                    _buildActionButton(Icons.info_outline, AppTheme.primaryColor),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, Color color) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Icon(icon, color: color, size: 28),
     );
   }
 

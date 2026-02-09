@@ -240,17 +240,26 @@ class _InfoScreenState extends State<InfoScreen> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 48,
-            backgroundColor: const Color(0xFFDADADA),
-            backgroundImage: _profileImage != null 
-              ? FileImage(File(_profileImage!.path))
-              : (_avatarUrl != null && _avatarUrl!.startsWith('http'))
-                ? NetworkImage(_avatarUrl!)
+          GestureDetector(
+            onTap: () {
+              if (_profileImage != null) {
+                _showProfileImage(context, _profileImage!.path, _currentName, isLocal: true);
+              } else if (_avatarUrl != null && _avatarUrl!.startsWith('http')) {
+                _showProfileImage(context, _avatarUrl!, _currentName);
+              }
+            },
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: const Color(0xFFDADADA),
+              backgroundImage: _profileImage != null 
+                ? FileImage(File(_profileImage!.path))
+                : (_avatarUrl != null && _avatarUrl!.startsWith('http'))
+                  ? NetworkImage(_avatarUrl!)
+                  : null,
+              child: (_profileImage == null && (_avatarUrl == null || !_avatarUrl!.startsWith('http')))
+                ? Icon(widget.isGroup ? Icons.group : Icons.person, size: 40, color: Colors.white) 
                 : null,
-            child: (_profileImage == null && (_avatarUrl == null || !_avatarUrl!.startsWith('http')))
-              ? Icon(widget.isGroup ? Icons.group : Icons.person, size: 40, color: Colors.white) 
-              : null,
+            ),
           ),
           const SizedBox(height: 12),
           if (_isEditMode)
@@ -973,6 +982,27 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
  
+
+  void _showProfileImage(BuildContext context, String imagePath, String name, {bool isLocal = false}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(name, style: const TextStyle(color: Colors.white)),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: isLocal ? Image.file(File(imagePath), fit: BoxFit.contain) : Image.network(imagePath, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   void _saveProfileImage(String imagePath) {
     // Store locally - extend later to save to providers
