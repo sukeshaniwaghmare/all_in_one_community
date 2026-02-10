@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/presentation/login_screen.dart';
-import '../features/community/presentation/home screen_selection_screen.dart';
+import '../features/home_page/home screen_selection_screen.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});

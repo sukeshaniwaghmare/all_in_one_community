@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/theme_provider.dart';
-import '../../profile/provider/profile_provider.dart';
-import '../../profile/presentation/profile_screen.dart';
-import '../../settings/presentation/settings_screen.dart';
-import '../../calls/presentation/calls_screen.dart';
-import '../../contacts/presentation/select_contacts_screen.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/theme_provider.dart';
+import '../profile/provider/profile_provider.dart';
+import '../profile/presentation/profile_screen.dart';
+import '../settings/presentation/settings_screen.dart';
+import '../calls/presentation/calls_screen.dart';
+import '../contacts/presentation/select_contacts_screen.dart';
 
 class CommunityDrawer extends StatelessWidget {
   const CommunityDrawer({super.key});

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../../core/theme/app_theme.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -12,6 +13,10 @@ class SearchScreen extends StatelessWidget {
             hintText: 'Search...',
             border: InputBorder.none,
           ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: const Center(

@@ -23,7 +23,7 @@ class _AdvancedChatPrivacyScreenState extends State<AdvancedChatPrivacyScreen> {
       appBar: AppTopBar(
         title: 'Advanced chat privacy',
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),

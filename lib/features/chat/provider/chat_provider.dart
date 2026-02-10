@@ -120,11 +120,18 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
 
-    // Check if this is a group chat
-    final isGroup = _chats.firstWhere(
-      (chat) => chat.receiverUserId == receiverUserId,
-      orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), unreadCount: 0, isGroup: false, receiverUserId: ''),
-    ).isGroup;
+    // Check if this is a group chat by checking if receiverUserId exists in groups table
+    bool isGroup = false;
+    try {
+      final groupCheck = await Supabase.instance.client
+          .from('groups')
+          .select('id')
+          .eq('id', receiverUserId)
+          .maybeSingle();
+      isGroup = groupCheck != null;
+    } catch (e) {
+      print('Error checking if group: $e');
+    }
 
     final message = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -264,6 +271,7 @@ class ChatProvider extends ChangeNotifier {
         'group_id': groupId,
         'user_id': memberId,
         'group_name': groupName,
+        'role': memberId == currentUserId ? 'admin' : 'member',
         'joined_at': DateTime.now().toIso8601String(),
       }).toList();
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../../../core/theme/app_theme.dart';
 
 class DisappearingMessagesScreen extends StatefulWidget {
   const DisappearingMessagesScreen({super.key});
@@ -53,6 +54,10 @@ class _DisappearingMessagesScreenState extends State<DisappearingMessagesScreen>
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -64,6 +69,10 @@ class _DisappearingMessagesScreenState extends State<DisappearingMessagesScreen>
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Column(
         children: [

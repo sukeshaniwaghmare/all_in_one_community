@@ -26,7 +26,7 @@ class _DisappearingMessagesScreenState extends State<DisappearingMessagesScreen>
       appBar: AppTopBar(
         title: 'Disappearing messages',
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),

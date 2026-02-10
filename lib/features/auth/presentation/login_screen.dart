@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
-import '../../community/presentation/home screen_selection_screen.dart';
+import '../../home_page/home screen_selection_screen.dart';
 import '../provider/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {

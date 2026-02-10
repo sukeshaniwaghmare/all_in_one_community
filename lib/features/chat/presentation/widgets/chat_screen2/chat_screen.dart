@@ -17,6 +17,7 @@ import 'option_screen/media_screen.dart';
 import 'option_screen/disappearing_messages_screen.dart';
 import 'option_screen/chat_theme_screen.dart';
 import '../chats_creen3/info_screen.dart';
+import '../../../../community/presentation/community_info_screen.dart';
 import 'image_picker_screen.dart';
 
 // ==================== UTILITY EXTENSION ====================
@@ -168,19 +169,30 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                     } catch (e) {
                       print('Error fetching member count: $e');
                     }
-                  }
-                  
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => InfoScreen(
-                        name: widget.chat.name,
-                        memberCount: memberCount,
-                        isGroup: widget.chat.isGroup,
-                        groupId: widget.chat.isGroup ? widget.chat.receiverUserId : null,
+                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CommunityInfoScreen(
+                          name: widget.chat.name,
+                          memberCount: memberCount,
+                          groupId: widget.chat.receiverUserId,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InfoScreen(
+                          name: widget.chat.name,
+                          memberCount: 0,
+                          isGroup: false,
+                          groupId: null,
+                        ),
+                      ),
+                    );
+                  }
                 },
                 // UI: Chat name and avatar
                 child: Row(

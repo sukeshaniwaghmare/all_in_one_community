@@ -7,6 +7,8 @@ import 'core/theme/theme_provider.dart';
 import 'features/notifications/services/services/fcm_service.dart';
 import 'package:provider/provider.dart';
 import 'features/community/provider/community_provider.dart';
+import 'features/community/data/datasources/community_datasource.dart';
+import 'features/community/data/repositories/community_repository_impl.dart';
 import 'features/chat/provider/chat_provider.dart';
 import 'features/chat/provider/unread_count_provider.dart';
 import 'features/chat/data/datasources/chat_datasource.dart';
@@ -46,7 +48,11 @@ class CommunityApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
-        ChangeNotifierProvider(create: (context) => CommunityProvider()),
+        ChangeNotifierProvider(create: (context) {
+          final dataSource = CommunityDataSource();
+          final repository = CommunityRepositoryImpl(dataSource);
+          return CommunityProvider(repository);
+        }),
         ChangeNotifierProvider(create: (context) => UnreadCountProvider()..initialize()),
         ChangeNotifierProvider(create: (context) {
           final dataSource = ChatDataSource();

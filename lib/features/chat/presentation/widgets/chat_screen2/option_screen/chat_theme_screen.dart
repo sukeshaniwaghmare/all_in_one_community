@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../../core/theme/app_theme.dart';
 
 class ChatThemeScreen extends StatelessWidget {
   const ChatThemeScreen({super.key});
@@ -20,6 +21,10 @@ class ChatThemeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat theme'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: GridView.builder(
         padding: const EdgeInsets.all(16),

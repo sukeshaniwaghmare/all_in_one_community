@@ -1,28 +1,34 @@
 import 'package:flutter/material.dart';
 import '../domain/community_type.dart';
+import '../domain/entities/member_entity.dart';
+import '../domain/entities/chat_entity.dart';
+import '../data/repositories/community_repository_impl.dart';
+import '../data/datasources/community_datasource.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class CommunityProvider extends ChangeNotifier {
-  CommunityProvider() {
+  final CommunityRepositoryImpl _repository;
+  
+  CommunityProvider(this._repository) {
     _loadGroups();
   }
 
   CommunityType? _selectedCommunity;
-  List<Member> _members = [];
+  List<MemberEntity> _members = [];
   bool _isLoading = false;
-  int _memberCount = 1234;
+  int _memberCount = 0;
 
   CommunityType? get selectedCommunity => _selectedCommunity;
-  List<Member> get members => _members;
+  List<MemberEntity> get members => _members;
   bool get isLoading => _isLoading;
   int get memberCount => _memberCount;
 
-  final List<ChatItem> _chats = [];
+  final List<ChatEntity> _chats = [];
 
-  List<ChatItem> get chats => _chats;
+  List<ChatEntity> get chats => _chats;
 
   void selectCommunity(CommunityType type) {
     _selectedCommunity = type;
@@ -30,33 +36,12 @@ class CommunityProvider extends ChangeNotifier {
     loadMembers();
   }
 
-  void loadMembers() {
+  Future<void> loadMembers() async {
     _isLoading = true;
     notifyListeners();
     
-    _members = [
-      Member(
-        id: '1',
-        name: 'John Doe',
-        role: 'Admin',
-        avatar: 'JD',
-        isOnline: true,
-      ),
-      Member(
-        id: '2',
-        name: 'Jane Smith',
-        role: 'Moderator',
-        avatar: 'JS',
-        isOnline: false,
-      ),
-      Member(
-        id: '3',
-        name: 'Mike Wilson',
-        role: 'Member',
-        avatar: 'MW',
-        isOnline: true,
-      ),
-    ];
+    _members = await _repository.getMembers();
+    _memberCount = await _repository.getMemberCount();
     
     _isLoading = false;
     notifyListeners();
@@ -81,7 +66,7 @@ class CommunityProvider extends ChangeNotifier {
                 .take(2)
                 .join();
             
-            _chats.add(ChatItem(
+            _chats.add(ChatEntity(
               initials: initials.isEmpty ? 'U' : initials,
               name: contact.displayName,
               preview: 'Tap to start conversation',
@@ -112,7 +97,7 @@ class CommunityProvider extends ChangeNotifier {
   }
 
   void addMember(String name, String email) {
-    final newMember = Member(
+    final newMember = MemberEntity(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       role: 'Member',
@@ -127,7 +112,7 @@ class CommunityProvider extends ChangeNotifier {
 
   void createGroup(String groupName, List<String> memberNames) async {
     final initials = groupName.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').take(2).join();
-    final newChat = ChatItem(
+    final newChat = ChatEntity(
       initials: initials.isEmpty ? 'G' : initials,
       name: groupName,
       preview: 'Group created',
@@ -142,7 +127,7 @@ class CommunityProvider extends ChangeNotifier {
   }
 
   List<String> getGroupMembers(String groupName) {
-    final chat = _chats.firstWhere((c) => c.name == groupName, orElse: () => ChatItem(initials: '', name: '', preview: '', time: '', unread: 0, avatarColor: Colors.grey));
+    final chat = _chats.firstWhere((c) => c.name == groupName, orElse: () => const ChatEntity(initials: '', name: '', preview: '', time: '', unread: 0, avatarColor: Colors.grey));
     return chat.members ?? [];
   }
 
@@ -162,7 +147,7 @@ class CommunityProvider extends ChangeNotifier {
     if (saved != null) {
       final List<dynamic> groups = jsonDecode(saved);
       for (var g in groups) {
-        _chats.insert(0, ChatItem(
+        _chats.insert(0, ChatEntity(
           initials: g['initials'],
           name: g['name'],
           preview: 'Group created',
@@ -180,7 +165,7 @@ class CommunityProvider extends ChangeNotifier {
     final index = _chats.indexWhere((chat) => chat.name == oldName);
     if (index != -1) {
       final oldChat = _chats[index];
-      _chats[index] = ChatItem(
+      _chats[index] = ChatEntity(
         initials: newName.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').take(2).join(),
         name: newName,
         preview: oldChat.preview,
@@ -193,40 +178,4 @@ class CommunityProvider extends ChangeNotifier {
       print('Updated contact name from $oldName to $newName in CommunityProvider');
     }
   }
-}
-
-class Member {
-  final String id;
-  final String name;
-  final String role;
-  final String avatar;
-  final bool isOnline;
-
-  Member({
-    required this.id,
-    required this.name,
-    required this.role,
-    required this.avatar,
-    this.isOnline = false,
-  });
-}
-
-class ChatItem {
-  final String initials;
-  final String name;
-  final String preview;
-  final String time;
-  final int unread;
-  final Color avatarColor;
-  final List<String>? members;
-
-  const ChatItem({
-    required this.initials,
-    required this.name,
-    required this.preview,
-    required this.time,
-    required this.unread,
-    required this.avatarColor,
-    this.members,
-  });
 }

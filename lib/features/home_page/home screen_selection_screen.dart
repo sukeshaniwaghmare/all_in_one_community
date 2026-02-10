@@ -2,29 +2,31 @@ import 'package:all_in_one_community/features/chat/presentation/widgets/chat_scr
 import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../provider/community_provider.dart';
+import '../community/provider/community_provider.dart';
 import 'community_sidebar.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../chat/data/models/chat_model.dart';
-import '../../chat/provider/chat_provider.dart' as chat;
-import '../../calls/presentation/calls_screen.dart';
-import '../../contacts/presentation/select_contacts_screen.dart';
-import '../../chat/presentation/screens_options/settings_screen.dart';
-import '../../chat/presentation/archived_chats_screen.dart';
+import '../community/presentation/communities_screen.dart';
+import '../community/presentation/community_info_screen.dart';
+import '../../core/theme/app_theme.dart';
+import '../chat/data/models/chat_model.dart';
+import '../chat/provider/chat_provider.dart' as chat;
+import '../calls/presentation/calls_screen.dart';
+import '../contacts/presentation/select_contacts_screen.dart';
+import '../chat/presentation/screens_options/settings_screen.dart';
+import '../chat/presentation/archived_chats_screen.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../chat/presentation/screens_options/new_group_screen.dart';
-import '../../chat/presentation/screens_options/new_community_screen.dart';
-import '../../chat/presentation/screens_options/broadcast_list_screen.dart';
-import '../../chat/presentation/screens_options/linked_devices_screen.dart';
-import '../../chat/presentation/screens_options/starred_messages_screen.dart';
-import '../../chat/presentation/screens_options/payments_screen.dart';
-import '../../calls/presentation/appbar_option_screen/schedule_call_screen.dart';
-import '../../calls/presentation/appbar_option_screen/clear_call_log_screen.dart';
-import '../../status/presentation/option_appbar_screen/status_privacy_screen.dart';
-import '../../status/presentation/option_appbar_screen/create_channel_screen.dart';
-import '../../status/presentation/option_appbar_screen/find_channels_screen.dart';
-import '../../status/presentation/status_screen.dart';
+import '../chat/presentation/screens_options/new_group_screen.dart';
+import '../chat/presentation/screens_options/new_community_screen.dart';
+import '../chat/presentation/screens_options/broadcast_list_screen.dart';
+import '../chat/presentation/screens_options/linked_devices_screen.dart';
+import '../chat/presentation/screens_options/starred_messages_screen.dart';
+import '../chat/presentation/screens_options/payments_screen.dart';
+import '../calls/presentation/appbar_option_screen/schedule_call_screen.dart';
+import '../calls/presentation/appbar_option_screen/clear_call_log_screen.dart';
+import '../status/presentation/option_appbar_screen/status_privacy_screen.dart';
+import '../status/presentation/option_appbar_screen/create_channel_screen.dart';
+import '../status/presentation/option_appbar_screen/find_channels_screen.dart';
+import '../status/presentation/status_screen.dart';
 
 class ChatItem {
   final String initials;
@@ -167,9 +169,29 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 ),
                 onChanged: (_) => setState(() {}),
               )
-            : Text(
-                _getAppBarTitle(),
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+            : GestureDetector(
+                onTap: () async {
+                  if (_currentTabIndex == 1) {
+                    // Get first community to show info
+                    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+                    if (communityProvider.chats.isNotEmpty) {
+                      final firstCommunity = communityProvider.chats.first;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CommunityInfoScreen(
+                            name: firstCommunity.name,
+                            memberCount: firstCommunity.members?.length ?? 0,
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Text(
+                  _getAppBarTitle(),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                ),
               ),
         actions: [
           // Show search icon for non-chat tabs
@@ -632,7 +654,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   Widget _buildCommunitiesTab() {
-    return const Center(child: Text('Communities'));
+    return const CommunitiesScreen();
   }
 
   Widget _buildStatusTab() {
