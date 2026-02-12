@@ -3,6 +3,7 @@ import 'package:all_in_one_community/features/chat/presentation/widgets/chat_scr
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../community/provider/community_provider.dart';
+import '../community/provider/community_list_provider.dart';
 import 'community_sidebar.dart';
 import '../community/presentation/communities_screen.dart';
 import '../community/presentation/community_info_screen.dart';
@@ -481,40 +482,42 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
 
 
   List<ChatItem> _getFilteredChats(List<ChatItem> chats) {
+    final listProvider = Provider.of<CommunityListProvider>(context, listen: false);
+    
     switch (_selectedFilter) {
       case 'Unread':
         return chats.where((c) => c.unread > 0).toList();
       case 'Favorites':
-        // Filter favorite chats (placeholder)
-        return [];
+        final favoriteCommunities = listProvider.getCommunitiesByList('Favorite');
+        return chats.where((c) => favoriteCommunities.contains(c.name)).toList();
       case 'Groups':
         return chats
             .where((c) => c.members != null && c.members!.isNotEmpty)
             .toList();
       case 'New Order':
-        // Filter chats with new order status
-        return [];
+        final newOrderCommunities = listProvider.getCommunitiesByList('New Order');
+        return chats.where((c) => newOrderCommunities.contains(c.name)).toList();
       case 'New Customer':
-        // Filter chats with new customers
-        return [];
+        final newCustomerCommunities = listProvider.getCommunitiesByList('New Customer');
+        return chats.where((c) => newCustomerCommunities.contains(c.name)).toList();
       case 'Pending Payment':
-        // Filter chats with pending payments
-        return [];
+        final pendingPaymentCommunities = listProvider.getCommunitiesByList('Pending Payment');
+        return chats.where((c) => pendingPaymentCommunities.contains(c.name)).toList();
       case 'Paid':
-        // Filter chats with completed payments
-        return [];
+        final paidCommunities = listProvider.getCommunitiesByList('Paid');
+        return chats.where((c) => paidCommunities.contains(c.name)).toList();
       case 'Important':
-        // Filter important chats
-        return [];
+        final importantCommunities = listProvider.getCommunitiesByList('Important');
+        return chats.where((c) => importantCommunities.contains(c.name)).toList();
       case 'Order Complete':
-        // Filter chats with completed orders
-        return [];
+        final orderCompleteCommunities = listProvider.getCommunitiesByList('Order Complete');
+        return chats.where((c) => orderCompleteCommunities.contains(c.name)).toList();
       case 'Follow Up':
-        // Filter chats requiring follow up
-        return [];
+        final followUpCommunities = listProvider.getCommunitiesByList('Follow Up');
+        return chats.where((c) => followUpCommunities.contains(c.name)).toList();
       case 'Lead':
-        // Filter potential leads
-        return [];
+        final leadCommunities = listProvider.getCommunitiesByList('Lead');
+        return chats.where((c) => leadCommunities.contains(c.name)).toList();
       default:
         return chats;
     }

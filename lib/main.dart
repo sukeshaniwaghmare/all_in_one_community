@@ -7,6 +7,7 @@ import 'core/theme/theme_provider.dart';
 import 'features/notifications/services/services/fcm_service.dart';
 import 'package:provider/provider.dart';
 import 'features/community/provider/community_provider.dart';
+import 'features/community/provider/community_list_provider.dart';
 import 'features/community/data/datasources/community_datasource.dart';
 import 'features/community/data/repositories/community_repository_impl.dart';
 import 'features/chat/provider/chat_provider.dart';
@@ -47,6 +48,7 @@ class CommunityApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => CommunityListProvider()),
         ChangeNotifierProvider(create: (context) {
           final dataSource = CommunityDataSource();
           final repository = CommunityRepositoryImpl(dataSource);

@@ -7,6 +7,8 @@ import '../../notifications/presentation/notification_screen.dart';
 import '../../chat/presentation/widgets/chats_creen3/option_screen/disappearing_messages_screen_infoscreen.dart';
 import '../../chat/presentation/widgets/chats_creen3/option_screen/advanced_chat_privacy_screen_infoscreen .dart';
 import 'role_selection_dialog.dart';
+import 'package:provider/provider.dart';
+import '../provider/community_list_provider.dart';
 
 class CommunityInfoScreen extends StatefulWidget {
   final String name;
@@ -541,7 +543,7 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
           _SettingTile(
             icon: Icons.playlist_add,
             title: 'Add to list',
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add to list'))),
+            onTap: _showAddToListSheet,
           ),
           const Divider(height: 1),
           _SettingTile(
@@ -966,6 +968,17 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
       ),
     );
   }
+
+  void _showAddToListSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => _AddToListSheet(groupName: widget.name),
+    );
+  }
 }
 
 class _SettingTile extends StatelessWidget {
@@ -1112,6 +1125,155 @@ class _AddMembersDialogState extends State<_AddMembersDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AddToListSheet extends StatefulWidget {
+  final String groupName;
+
+  const _AddToListSheet({required this.groupName});
+
+  @override
+  State<_AddToListSheet> createState() => _AddToListSheetState();
+}
+
+class _AddToListSheetState extends State<_AddToListSheet> {
+  final List<String> _lists = [
+    'Favorite',
+    'New Customer',
+    'New Order',
+    'Pending Payment',
+    'Paid',
+    'Important',
+    'Order Complete',
+    'Follow Up',
+    'Lead',
+  ];
+  String? _selectedList;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.70,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Add to list',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _lists.length,
+              itemBuilder: (context, index) {
+                final list = _lists[index];
+                final isSelected = _selectedList == list;
+                return RadioListTile<String>(
+                  value: list,
+                  groupValue: _selectedList,
+                  onChanged: (value) => setState(() => _selectedList = value),
+                  title: Text(list, style: const TextStyle(fontSize: 14)),
+                  activeColor: AppTheme.primaryColor,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -2),
+                );
+              },
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.add, color: AppTheme.primaryColor, size: 20),
+            title: Text(
+              'Create new list',
+              style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500, fontSize: 14),
+            ),
+            onTap: () => _createNewList(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            visualDensity: const VisualDensity(horizontal: 0, vertical: -2),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _selectedList == null
+                    ? null
+                    : () {
+                        Provider.of<CommunityListProvider>(context, listen: false)
+                            .addToList(widget.groupName, _selectedList!);
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${widget.groupName} added to $_selectedList')),
+                        );
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Done', style: TextStyle(fontSize: 15)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _createNewList() {
+    final TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create new list'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'List name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                setState(() => _lists.add(name));
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
       ),
     );
   }
