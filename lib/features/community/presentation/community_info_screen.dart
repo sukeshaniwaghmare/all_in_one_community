@@ -689,32 +689,99 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
     }
   }
 
-  void _reportCommunity() {
-    showDialog(
+  void _reportCommunity() async {
+    final dialogContext = context;
+    bool exitAndDelete = true;
+    
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Report ${widget.name}?'),
-        content: const Text('This community will be reported for inappropriate behavior.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text(
+            'Report this group to Community?',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'The last 5 messages from this group will be forwarded to Community. If you exit this group and delete the chat, messages will only be removed from this device and your devices on the newer versions of Community.',
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No one in this group will be notified.',
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                value: exitAndDelete,
+                onChanged: (value) => setState(() => exitAndDelete = value ?? true),
+                title: const Text('Exit group and delete chat'),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: const Color(0xFF25D366),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.primaryColor, fontSize: 16),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'Report',
+                style: TextStyle(color: AppTheme.primaryColor, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    
+    if (result == true && mounted) {
+      if (exitAndDelete) {
+        try {
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          if (currentUserId != null && widget.groupId != null) {
+            await Supabase.instance.client
+                .from('group_members')
+                .delete()
+                .eq('group_id', widget.groupId!)
+                .eq('user_id', currentUserId);
+            
+            if (mounted) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
                 SnackBar(
-                  content: Text('${widget.name} has been reported'),
+                  content: Text('${widget.name} has been reported and you left the group'),
                   backgroundColor: Colors.red,
                 ),
               );
-            },
-            child: const Text('Report', style: TextStyle(color: Colors.red)),
+              Navigator.pop(dialogContext);
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              SnackBar(content: Text('Failed to exit group: $e')),
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(dialogContext).showSnackBar(
+          SnackBar(
+            content: Text('${widget.name} has been reported'),
+            backgroundColor: Colors.red,
           ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   void _addMembers() async {
