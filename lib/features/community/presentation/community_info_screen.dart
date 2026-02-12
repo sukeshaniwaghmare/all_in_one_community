@@ -642,32 +642,51 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
     );
   }
 
-  void _exitCommunity() {
-    showDialog(
+  void _exitCommunity() async {
+    final dialogContext = context;
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exit community?'),
-        content: const Text('You will no longer receive messages from this community.'),
+        title: const Text('Exit group'),
+        content: const Text('You will no longer receive messages from this group.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Left the community'), 
-                  backgroundColor: Colors.red
-                ),
-              );
-            },
-            child: const Text('Exit', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('EXIT GROUP', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+    
+    if (result == true && mounted) {
+      try {
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        if (currentUserId != null && widget.groupId != null) {
+          await Supabase.instance.client
+              .from('group_members')
+              .delete()
+              .eq('group_id', widget.groupId!)
+              .eq('user_id', currentUserId);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              const SnackBar(content: Text('You left the group')),
+            );
+            Navigator.pop(dialogContext);
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(dialogContext).showSnackBar(
+            SnackBar(content: Text('Failed to exit group: $e')),
+          );
+        }
+      }
+    }
   }
 
   void _reportCommunity() {
