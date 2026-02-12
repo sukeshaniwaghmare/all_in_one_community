@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/apptopbar.dart';
 import '../../camera/presentation/camera_screen.dart';
-import '../../search/presentation/search_screen.dart';
 
 class StatusScreen extends StatefulWidget {
   const StatusScreen({super.key});

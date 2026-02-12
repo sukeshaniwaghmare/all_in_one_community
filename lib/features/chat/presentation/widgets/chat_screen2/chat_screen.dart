@@ -231,15 +231,104 @@ class _ChatDetailScreenState extends State<ChatScreen> {
         actions: _isSearching
             ? null
             : [
+          IconButton(
+            icon: Icon(Icons.videocam, color: AppTheme.primaryColor),
+            padding: EdgeInsets.only(right: 0),
+            constraints: BoxConstraints(),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Starting video call...')),
+              );
+            },
+          ),
+          Transform.translate(
+            offset: Offset(-12, 0),
+            child: PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+            onSelected: (value) {
+              if (value == 'voice_call') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Starting voice call...')),
+                );
+              } else if (value == 'video_call') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Starting video call...')),
+                );
+              } else if (value == 'select_people') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Select people for call')),
+                );
+              } else if (value == 'send_link') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Send call link')),
+                );
+              } else if (value == 'schedule') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Schedule call')),
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'voice_call',
+                child: Row(
+                  children: [
+                    Icon(Icons.call),
+                    SizedBox(width: 12),
+                    Text('Voice call'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'video_call',
+                child: Row(
+                  children: [
+                    Icon(Icons.videocam),
+                    SizedBox(width: 12),
+                    Text('Video call'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'select_people',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_add),
+                    SizedBox(width: 12),
+                    Text('Select people'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'send_link',
+                child: Row(
+                  children: [
+                    Icon(Icons.link),
+                    SizedBox(width: 12),
+                    Text('Send call link'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'schedule',
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule),
+                    SizedBox(width: 12),
+                    Text('Schedule call'),
+                  ],
+                ),
+              ),
+            ],
+            ),
+          ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
             onSelected: (value) {
               // LOGIC: Handle menu selection
-              if (value == 'search') {
-                setState(() {
-                  _isSearching = true;
-                });
-              } else if (value == 'media') {
+              if (value == 'media') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => MediaScreen(
                   chatName: widget.chat.name,
                   receiverUserId: widget.chat.receiverUserId,
@@ -260,16 +349,6 @@ class _ChatDetailScreenState extends State<ChatScreen> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'search',
-                child: Row(
-                  children: [
-                    Icon(Icons.search),
-                    SizedBox(width: 12),
-                    Text('Search'),
-                  ],
-                ),
-              ),
               const PopupMenuItem(
                 value: 'media',
                 child: Row(

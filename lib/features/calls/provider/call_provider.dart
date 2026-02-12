@@ -49,7 +49,7 @@ class CallProvider with ChangeNotifier {
           type: c['type'],
           isVideo: c['isVideo'],
           avatar: c['avatar'],
-          color: Color(c['color']),
+          color: Color(int.parse(c['color'].toString().replaceAll('#', ''), radix: 16)),
         )).toList();
         notifyListeners();
       }
@@ -69,7 +69,7 @@ class CallProvider with ChangeNotifier {
         'type': c.type,
         'isVideo': c.isVideo,
         'avatar': c.avatar,
-        'color': c.color.value,
+        'color': '#${c.color.value.toRadixString(16).padLeft(8, '0')}',
       }).toList();
       await prefs.setString('saved_calls', jsonEncode(callList));
     } catch (e) {
@@ -109,7 +109,7 @@ class CallProvider with ChangeNotifier {
         'type': call.type,
         'is_video': call.isVideo,
         'avatar': call.avatar,
-        'color': call.color.value,
+        'color': '#${call.color.value.toRadixString(16).padLeft(8, '0')}',
         'user_id': SupabaseService.instance.currentUserId,
       });
     } catch (e) {
@@ -134,7 +134,7 @@ class CallProvider with ChangeNotifier {
         type: data['type'],
         isVideo: data['is_video'],
         avatar: data['avatar'],
-        color: Color(data['color']),
+        color: Color(int.parse(data['color'].toString().replaceAll('#', ''), radix: 16)),
       )).toList();
       
       notifyListeners();

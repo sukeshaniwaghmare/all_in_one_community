@@ -5,7 +5,7 @@ import '../../qr/presentation/qr_code_screen.dart';
 import '../../privacy/presentation/privacy_screen.dart';
 import '../../notifications/presentation/notification_screen.dart';
 import '../../camera/presentation/camera_screen.dart';
-import '../../search/presentation/search_screen.dart';
+
 import '../../broadcast/presentation/broadcast_screen.dart';
 import '../../contacts/presentation/select_contacts_screen.dart';
 import '../../media/presentation/media_viewer_screen.dart';
@@ -20,14 +20,6 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppTopBar(
         title: 'Settings',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const SearchScreen()
-              ));
-            },
-          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) => _handleMenuAction(context, value),

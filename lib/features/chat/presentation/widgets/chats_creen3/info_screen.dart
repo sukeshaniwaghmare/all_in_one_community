@@ -1,3 +1,5 @@
+import 'package:all_in_one_community/features/calls/presentation/audio_call_screen.dart';
+import 'package:all_in_one_community/features/calls/presentation/video_call_screen.dart';
 import 'package:all_in_one_community/features/chat/presentation/widgets/chats_creen3/edit_infoscreen_screen.dart';
 import 'package:flutter/material.dart';
 import 'option_screen/create_group_screen.dart';
@@ -13,7 +15,6 @@ import '../../../../notifications/presentation/notification_screen.dart';
 import 'option_screen/disappearing_messages_screen_infoscreen.dart';
 import 'option_screen/advanced_chat_privacy_screen_infoscreen .dart';
 import '../../../../calls/presentation/call_info_screen.dart';
-import '../../../../video_call/presentation/video_call_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InfoScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class InfoScreen extends StatefulWidget {
   final String? description;
   final String? createdBy;
   final String? createdDate;
+  final String? receiverId;
 
   const InfoScreen({
     super.key,
@@ -34,6 +36,7 @@ class InfoScreen extends StatefulWidget {
     this.description,
     this.createdBy,
     this.createdDate,
+    this.receiverId,
   });
 
   @override
@@ -136,11 +139,10 @@ class _InfoScreenState extends State<InfoScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CallInfoScreen(
-                    name: widget.name,
-                    avatar: widget.name[0].toUpperCase(),
-                    color: AppTheme.primaryColor,
-                    isVideo: false,
+                  builder: (_) => AudioCallScreen(
+                    contactName: widget.name,
+                    receiverId: widget.receiverId,
+                    isIncoming: false,
                   ),
                 ),
               );
@@ -154,6 +156,7 @@ class _InfoScreenState extends State<InfoScreen> {
                 MaterialPageRoute(
                   builder: (_) => VideoCallScreen(
                     contactName: widget.name,
+                    receiverId: widget.receiverId,
                     isIncoming: false,
                   ),
                 ),
@@ -301,11 +304,10 @@ class _InfoScreenState extends State<InfoScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => CallInfoScreen(
-                  name: widget.name,
-                  avatar: widget.name[0].toUpperCase(),
-                  color: AppTheme.primaryColor,
-                  isVideo: false,
+                builder: (_) => AudioCallScreen(
+                  contactName: widget.name,
+                  receiverId: widget.receiverId,
+                  isIncoming: false,
                 ),
               ),
             );
@@ -316,6 +318,7 @@ class _InfoScreenState extends State<InfoScreen> {
               MaterialPageRoute(
                 builder: (_) => VideoCallScreen(
                   contactName: widget.name,
+                  receiverId: widget.receiverId,
                   isIncoming: false,
                 ),
               ),

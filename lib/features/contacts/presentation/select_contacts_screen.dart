@@ -12,6 +12,9 @@ class ContactsScreen extends StatefulWidget {
 }
 
 class _ContactsScreenState extends State<ContactsScreen> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -21,25 +24,113 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        title: const Text('Select contact'),
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.primaryColor,
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: AppTheme.primaryColor),
+                decoration: const InputDecoration(
+                  hintText: 'Search contacts...',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  border: InputBorder.none,
+                ),
+                onChanged: (query) {
+                  context.read<ContactProvider>().setSearchQuery(query);
+                },
+              )
+            : const Text('Select contact'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => _showSearchDialog(context),
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                  context.read<ContactProvider>().setSearchQuery('');
+                }
+              });
+            },
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'invite_all') {
                 _showInviteAllDialog(context);
+              } else if (value == 'contact_settings') {
+                // Contact settings action
+              } else if (value == 'invite_friend') {
+                // Invite a friend action
+              } else if (value == 'contacts') {
+                // Contacts action
+              } else if (value == 'refresh') {
+                context.read<ContactProvider>().loadContacts();
+              } else if (value == 'help') {
+                // Help action
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'contact_settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings),
+                    SizedBox(width: 8),
+                    Text('Contact settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'invite_friend',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_add),
+                    SizedBox(width: 8),
+                    Text('Invite a friend'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'contacts',
+                child: Row(
+                  children: [
+                    Icon(Icons.contacts),
+                    SizedBox(width: 8),
+                    Text('Contacts'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'refresh',
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh),
+                    SizedBox(width: 8),
+                    Text('Refresh'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'help',
+                child: Row(
+                  children: [
+                    Icon(Icons.help),
+                    SizedBox(width: 8),
+                    Text('Help'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'invite_all',
                 child: Row(
@@ -156,37 +247,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Search contacts'),
-        content: TextField(
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter name or phone number',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (query) {
-            context.read<ContactProvider>().setSearchQuery(query);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              context.read<ContactProvider>().setSearchQuery('');
-              Navigator.pop(context);
-            },
-            child: const Text('Clear'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _showInviteAllDialog(BuildContext context) {
     final provider = context.read<ContactProvider>();
