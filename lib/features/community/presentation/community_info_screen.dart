@@ -545,6 +545,12 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
           ),
           const Divider(height: 1),
           _SettingTile(
+            icon: Icons.delete_outline,
+            title: 'Clear chat',
+            onTap: _clearChat,
+          ),
+          const Divider(height: 1),
+          _SettingTile(
             icon: Icons.exit_to_app,
             title: 'Exit community',
             iconColor: Colors.red,
@@ -640,6 +646,50 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
         content: Text(_isFavorite ? 'Added to favorites' : 'Removed from favorites'),
       ),
     );
+  }
+
+  void _clearChat() async {
+    final dialogContext = context;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear chat'),
+        content: Text('Clear all messages in ${widget.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('CANCEL', style: TextStyle(color: AppTheme.primaryColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('CLEAR', style: TextStyle(color: AppTheme.primaryColor)),
+          ),
+        ],
+      ),
+    );
+    
+    if (result == true && mounted) {
+      try {
+        if (widget.groupId != null) {
+          await Supabase.instance.client
+              .from('group_messages')
+              .delete()
+              .eq('group_id', widget.groupId!);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              const SnackBar(content: Text('Chat cleared')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(dialogContext).showSnackBar(
+            SnackBar(content: Text('Failed to clear chat: $e')),
+          );
+        }
+      }
+    }
   }
 
   void _exitCommunity() async {
