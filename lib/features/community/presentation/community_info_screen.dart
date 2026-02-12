@@ -770,31 +770,26 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
           TextButton(
             onPressed: () async {
               final newName = nameController.text.trim();
-              print('DEBUG: New name: $newName');
-              print('DEBUG: Group ID: ${widget.groupId}');
+           
               if (newName.isNotEmpty && widget.groupId != null) {
                 Navigator.pop(context);
                 try {
-                  print('DEBUG: Updating database...');
                   final result = await Supabase.instance.client
                       .from('groups')
                       .update({'name': newName})
                       .eq('id', widget.groupId!)
                       .select();
                   
-                  print('DEBUG: Update result: $result');
                   
                   setState(() {
                     _groupName = newName;
                   });
                   
-                  print('DEBUG: State updated with new name: $_groupName');
                   
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Group name changed to "$newName"')),
                   );
                 } catch (e) {
-                  print('DEBUG: Error: $e');
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Failed to update name: $e')),
                   );

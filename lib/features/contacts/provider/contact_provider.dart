@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../chat/provider/chat_provider.dart' as chat;
 import '../../chat/data/models/chat_model.dart' as chat;
 import '../../chat/presentation/widgets/chat_screen2/chat_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactProvider extends ChangeNotifier {
   List<Contact> _contacts = [];
@@ -163,10 +164,9 @@ class ContactProvider extends ChangeNotifier {
 
 Future<void> inviteContact(Contact contact) async {
     try {
-      await Future.delayed(const Duration(milliseconds: 200));
+      await _sendSMS(contact.phoneNumber, 'Join our community app! Download now: [App Link]');
       debugPrint('Invited ${contact.name} (${contact.phoneNumber})');
       
-      // Update contact as app user (for demo purposes)
       final index = _contacts.indexWhere((c) => c.id == contact.id);
       if (index != -1) {
         _contacts[index] = contact.copyWith(isAppUser: true);
@@ -174,6 +174,15 @@ Future<void> inviteContact(Contact contact) async {
       }
     } catch (e) {
       debugPrint('Error inviting contact: $e');
+    }
+  }
+
+  Future<void> _sendSMS(String phoneNumber, String message) async {
+    final uri = Uri.parse('sms:$phoneNumber?body=${Uri.encodeComponent(message)}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      debugPrint('Could not launch SMS for $phoneNumber');
     }
   }
 

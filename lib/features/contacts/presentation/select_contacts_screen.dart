@@ -150,13 +150,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 ),
               ),
             ),
-      onTap: () {
-        if (contact.isAppUser) {
-          provider.startChat(contact, context);
-        } else {
-          _showInviteDialog(contact, provider);
-        }
-      },
+      onTap: contact.isAppUser
+          ? () => provider.startChat(contact, context)
+          : () => _showInviteDialog(contact, provider),
     );
   }
 
