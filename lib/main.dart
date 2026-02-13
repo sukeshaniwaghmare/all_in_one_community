@@ -19,6 +19,12 @@ import 'features/chat/domain/usecases/get_messages_usecase.dart';
 import 'features/chat/domain/usecases/send_message_usecase.dart';
 import 'features/profile/provider/profile_provider.dart';
 import 'features/auth/provider/auth_provider.dart';
+import 'features/archived/provider/archived_provider.dart';
+import 'features/archived/data/datasources/archived_datasource.dart';
+import 'features/archived/data/repositories/archived_repository_impl.dart';
+import 'features/archived/domain/usecases/archive_chat_usecase.dart';
+import 'features/archived/domain/usecases/unarchive_chat_usecase.dart';
+import 'features/archived/domain/usecases/get_archived_chats_usecase.dart';
 
 import 'features/calls/provider/call_provider.dart';
 import 'features/contacts/provider/contact_provider.dart';
@@ -62,6 +68,15 @@ class CommunityApp extends StatelessWidget {
             getChatsUseCase: GetChatsUseCase(repository),
             getMessagesUseCase: GetMessagesUseCase(repository),
             sendMessageUseCase: SendMessageUseCase(repository),
+          );
+        }),
+        ChangeNotifierProvider(create: (context) {
+          final dataSource = ArchivedDataSource();
+          final repository = ArchivedRepositoryImpl(dataSource);
+          return ArchivedProvider(
+            archiveChatUseCase: ArchiveChatUseCase(repository),
+            unarchiveChatUseCase: UnarchiveChatUseCase(repository),
+            getArchivedChatsUseCase: GetArchivedChatsUseCase(repository),
           );
         }),
         ChangeNotifierProvider(create: (context) => CallProvider()),

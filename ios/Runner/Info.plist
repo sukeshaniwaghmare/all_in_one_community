@@ -47,6 +47,10 @@
 	<true/>
 	<key>NSContactsUsageDescription</key>
 	<string>This app needs access to contacts to show your contact list.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos and videos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record videos with audio.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

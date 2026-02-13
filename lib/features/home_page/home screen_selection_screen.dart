@@ -1,5 +1,3 @@
-import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen1/chat_list_screen.dart';
-import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../community/provider/community_provider.dart';
@@ -13,9 +11,10 @@ import '../chat/provider/chat_provider.dart' as chat;
 import '../calls/presentation/calls_screen.dart';
 import '../contacts/presentation/select_contacts_screen.dart';
 import '../chat/presentation/screens_options/settings_screen.dart';
-import '../chat/presentation/archived_chats_screen.dart';
+import '../archived/presentation/archived_chats_screen.dart';
+import '../archived/provider/archived_provider.dart';
 import 'package:image_picker/image_picker.dart';
-
+import '../chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import '../chat/presentation/screens_options/new_group_screen.dart';
 import '../chat/presentation/screens_options/new_community_screen.dart';
 import '../chat/presentation/screens_options/broadcast_list_screen.dart';
@@ -27,7 +26,6 @@ import '../calls/presentation/appbar_option_screen/clear_call_log_screen.dart';
 import '../status/presentation/option_appbar_screen/status_privacy_screen.dart';
 import '../status/presentation/option_appbar_screen/create_channel_screen.dart';
 import '../status/presentation/option_appbar_screen/find_channels_screen.dart';
-import '../status/presentation/status_screen.dart';
 
 class ChatItem {
   final String initials;
@@ -79,6 +77,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     // Load chats from ChatProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<chat.ChatProvider>(context, listen: false).loadChats();
+      Provider.of<ArchivedProvider>(context, listen: false).loadArchivedChats();
     });
   }
 
@@ -90,45 +89,30 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-    
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m';
-    } else {
-      return 'now';
-    }
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inDays > 0) return '${diff.inDays}d';
+    if (diff.inHours > 0) return '${diff.inHours}h';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m';
+    return 'now';
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<CommunityProvider>(context);
     final chatProvider = Provider.of<chat.ChatProvider>(context);
-    
-    // Use ChatProvider chats directly - they are already loaded from persistence
-    List<ChatItem> chats = chatProvider.chats.map((chatItem) => ChatItem(
-        initials: chatItem.name.isNotEmpty ? chatItem.name[0].toUpperCase() : '?',
-        name: chatItem.name,
-        preview: chatItem.lastMessage,
-        time: _formatTime(chatItem.lastMessageTime),
-        unread: chatItem.unreadCount,
-        avatarColor: Colors.blue,
-      )).toList();
+    final archivedProvider = Provider.of<ArchivedProvider>(context);
+    List<ChatItem> chats = chatProvider.chats
+        .where((c) => !archivedProvider.isArchived(c.id))
+        .map((c) => ChatItem(
+            initials: c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+            name: c.name,
+            preview: c.lastMessage,
+            time: _formatTime(c.lastMessageTime),
+            unread: c.unreadCount,
+            avatarColor: Colors.blue,
+          )).toList();
 
     if (_searchController.text.isNotEmpty) {
-      chats = chats
-          .where((c) =>
-              c.name
-                  .toLowerCase()
-                  .contains(_searchController.text.toLowerCase()) ||
-              c.preview
-                  .toLowerCase()
-                  .contains(_searchController.text.toLowerCase()))
-          .toList();
+      chats = chats.where((c) => c.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
     }
 
     return Scaffold(
@@ -140,25 +124,21 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         elevation: 0,
         toolbarHeight: 50,
         leading: Builder(
-              builder: (context) => IconButton(
-                onPressed: () => Scaffold.of(context).openDrawer(),
-                icon: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey.shade200,
-                  ),
-                  child: Icon(
-                    Icons.menu, // three lines
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
+          builder: (context) => IconButton(
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey.shade200,
               ),
+              child: Icon(Icons.menu, color: AppTheme.primaryColor),
             ),
+          ),
+        ),
 
-        
-        title: (_isSearching && _currentTabIndex != 0)
+        title: _isSearching && _currentTabIndex != 0
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
@@ -170,29 +150,9 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 ),
                 onChanged: (_) => setState(() {}),
               )
-            : GestureDetector(
-                onTap: () async {
-                  if (_currentTabIndex == 1) {
-                    // Get first community to show info
-                    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
-                    if (communityProvider.chats.isNotEmpty) {
-                      final firstCommunity = communityProvider.chats.first;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CommunityInfoScreen(
-                            name: firstCommunity.name,
-                            memberCount: firstCommunity.members?.length ?? 0,
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Text(
-                  _getAppBarTitle(),
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                ),
+            : Text(
+                _getAppBarTitle(),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
               ),
         actions: [
           // Show search icon for non-chat tabs
@@ -450,15 +410,11 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     );
   }
 
-
-
   Widget _buildAddListButton() {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('New list feature coming soon')),
-        );
-      },
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New list feature coming soon')),
+      ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
         decoration: BoxDecoration(
@@ -470,17 +426,12 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
           children: [
             Icon(Icons.add, size: 16, color: Colors.grey.shade700),
             const SizedBox(width: 4),
-            Text(
-              'New list',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
+            Text('New list', style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
           ],
         ),
       ),
     );
   }
-
-
   List<ChatItem> _getFilteredChats(List<ChatItem> chats) {
     final listProvider = Provider.of<CommunityListProvider>(context, listen: false);
     
@@ -525,17 +476,13 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
 
   Widget _buildChatsTab(List<ChatItem> chats) {
     final chatProvider = Provider.of<chat.ChatProvider>(context);
+    final archivedProvider = Provider.of<ArchivedProvider>(context);
+    final archivedCount = chatProvider.chats.where((c) => archivedProvider.isArchived(c.id)).length;
     
     return Column(
       children: [
         GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const ArchivedChatsScreen()),
-            );
-          },
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ArchivedChatsScreen())),
           child: Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -544,15 +491,8 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 Container(
                   width: 28,
                   height: 28,
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.archive_outlined,
-                    color: Colors.white,
-                    size: 14,
-                  ),
+                  decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                  child: const Icon(Icons.archive_outlined, color: Colors.white, size: 14),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -560,22 +500,15 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Archived',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
+                      const Text('Archived', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                       Text(
-                        '${chats.length} chats${chats.fold<int>(0, (sum, chat) => sum + chat.unread) > 0 ? ' • ${chats.fold<int>(0, (sum, chat) => sum + chat.unread)} new' : ''}',
+                        '$archivedCount',
                         style: const TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.grey,
-                  size: 16,
-                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
               ],
             ),
           ),
@@ -589,14 +522,8 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                     children: [
                       Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
                       SizedBox(height: 16),
-                      Text(
-                        'No chats yet',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
-                      Text(
-                        'Tap to start conversation',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
+                      Text('No chats yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      Text('Tap to start conversation', style: TextStyle(fontSize: 14, color: Colors.grey)),
                     ],
                   ),
                 )
@@ -604,11 +531,10 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                   itemCount: chats.length,
                   itemBuilder: (_, i) {
                     final chatItem = chats[i];
+                    final actualChat = chatProvider.chats.firstWhere((c) => c.name == chatItem.name);
                     return InkWell(
-                      onTap: () {
-                        print('Tapping on chat: ${chatItem.name}');
-                        _openChat(context, chatItem);
-                      },
+                      onTap: () => _openChat(context, chatItem),
+                      onLongPress: () => _showChatOptions(context, actualChat.id, chatItem.name),
                       child: ListTile(
                         leading: GestureDetector(
                           onTap: () {
@@ -625,16 +551,11 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                                       width: 40,
                                       height: 40,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Text(chatItem.initials);
-                                      },
+                                      errorBuilder: (context, error, stackTrace) => Text(chatItem.initials),
                                     ),
                                   ),
                                 )
-                              : CircleAvatar(
-                                  backgroundColor: chatItem.avatarColor,
-                                  child: Text(chatItem.initials),
-                                ),
+                              : CircleAvatar(backgroundColor: chatItem.avatarColor, child: Text(chatItem.initials)),
                         ),
                         title: Text(chatItem.name),
                         subtitle: Text(chatItem.preview, maxLines: 1),
@@ -642,9 +563,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                             ? CircleAvatar(
                                 radius: 10,
                                 backgroundColor: AppTheme.primaryColor,
-                                child: Text('${chatItem.unread}',
-                                    style: const TextStyle(
-                                        color: Colors.white, fontSize: 12)),
+                                child: Text('${chatItem.unread}', style: const TextStyle(color: Colors.white, fontSize: 12)),
                               )
                             : null,
                       ),
@@ -656,9 +575,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     );
   }
 
-  Widget _buildCommunitiesTab() {
-    return const CommunitiesScreen();
-  }
+  Widget _buildCommunitiesTab() => const CommunitiesScreen();
 
   Widget _buildStatusTab() {
     return Container(
@@ -811,17 +728,11 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   void _openChat(BuildContext context, ChatItem item) {
-    // Use the existing Chat from ChatProvider if available, otherwise create local one
     final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
-    
-    // Find existing chat or create new one
     Chat existingChat;
     try {
-      existingChat = chatProvider.chats.firstWhere(
-        (c) => c.name == item.name,
-      );
+      existingChat = chatProvider.chats.firstWhere((c) => c.name == item.name);
     } catch (e) {
-      // Create a local chat for demo
       final localId = 'local_${item.name.toLowerCase().replaceAll(' ', '_')}';
       existingChat = Chat(
         id: localId,
@@ -831,97 +742,54 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         receiverUserId: localId,
       );
     }
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ChatScreen(chat: existingChat as dynamic)),
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chat: existingChat as dynamic)));
+  }
+
+  void _showChatOptions(BuildContext context, String chatId, String chatName) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.archive),
+              title: const Text('Archive chat'),
+              onTap: () async {
+                Navigator.pop(context);
+                await Provider.of<ArchivedProvider>(context, listen: false).archiveChat(chatId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$chatName archived')),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _handleMenuAction(String value) {
-    switch (value) {
-      case 'settings':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-        );
-        break;
-      // Chat tab actions
-      case 'new_group':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const NewGroupScreen()),
-        );
-        break;
-      case 'new_community':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const NewCommunityScreen()),
-        );
-        break;
-      case 'broadcast_list':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const BroadcastListScreen()),
-        );
-        break;
-      case 'Linked Devices':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const LinkedDevicesScreen()),
-        );
-        break;
-      case 'Starred':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const StarredMessagesScreen()),
-        );
-        break;
-      case 'payments':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const PaymentsScreen()),
-        );
-        break;
-      // Communities tab actions
-      case 'create_community':
-      case 'join_community':
-      case 'community_settings':
-      case 'manage_members':
-        // Handle community-specific actions
-        break;
-      // Calls tab actions
-      case 'schedule_call':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ScheduleCallScreen()),
-        );
-        break;
-      case 'clear_call_log':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ClearCallLogScreen()),
-        );
-        break;
-      // Updates tab actions
-      case 'status_privacy':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const StatusPrivacyScreen()),
-        );
-        break;
-      case 'create_channel':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CreateChannelScreen()),
-        );
-        break;
-      case 'find_channels':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const FindChannelsScreen()),
-        );
-        break;
+    final routes = {
+      'settings': const SettingsScreen(),
+      'new_group': const NewGroupScreen(),
+      'new_community': const NewCommunityScreen(),
+      'broadcast_list': const BroadcastListScreen(),
+      'Linked Devices': const LinkedDevicesScreen(),
+      'Starred': const StarredMessagesScreen(),
+      'payments': const PaymentsScreen(),
+      'schedule_call': const ScheduleCallScreen(),
+      'clear_call_log': const ClearCallLogScreen(),
+      'status_privacy': const StatusPrivacyScreen(),
+      'create_channel': const CreateChannelScreen(),
+      'find_channels': const FindChannelsScreen(),
+    };
+    
+    if (routes.containsKey(value)) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => routes[value]!));
     }
   }
 }
