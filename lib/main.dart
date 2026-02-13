@@ -25,6 +25,7 @@ import 'features/archived/data/repositories/archived_repository_impl.dart';
 import 'features/archived/domain/usecases/archive_chat_usecase.dart';
 import 'features/archived/domain/usecases/unarchive_chat_usecase.dart';
 import 'features/archived/domain/usecases/get_archived_chats_usecase.dart';
+import 'features/status/provider/status_provider.dart';
 
 import 'features/calls/provider/call_provider.dart';
 import 'features/contacts/provider/contact_provider.dart';
@@ -82,6 +83,7 @@ class CommunityApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => CallProvider()),
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
         ChangeNotifierProvider(create: (context) => ContactProvider()),
+        ChangeNotifierProvider(create: (context) => StatusProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

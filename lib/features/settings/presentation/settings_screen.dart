@@ -4,7 +4,6 @@ import '../../../core/widgets/apptopbar.dart';
 import '../../qr/presentation/qr_code_screen.dart';
 import '../../privacy/presentation/privacy_screen.dart';
 import '../../notifications/presentation/notification_screen.dart';
-import '../../camera/presentation/camera_screen.dart';
 
 import '../../broadcast/presentation/broadcast_screen.dart';
 import '../../contacts/presentation/select_contacts_screen.dart';
@@ -72,9 +71,7 @@ class SettingsScreen extends StatelessWidget {
 
   void _handleMenuAction(BuildContext context, String value) {
     switch (value) {
-      case 'camera':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const CameraScreen()));
-        break;
+      
       case 'broadcast':
         Navigator.push(context, MaterialPageRoute(builder: (_) => const BroadcastScreen()));
         break;

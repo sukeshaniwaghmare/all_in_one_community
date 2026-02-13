@@ -23,9 +23,9 @@ import '../chat/presentation/screens_options/starred_messages_screen.dart';
 import '../chat/presentation/screens_options/payments_screen.dart';
 import '../calls/presentation/appbar_option_screen/schedule_call_screen.dart';
 import '../calls/presentation/appbar_option_screen/clear_call_log_screen.dart';
-import '../status/presentation/option_appbar_screen/status_privacy_screen.dart';
-import '../status/presentation/option_appbar_screen/create_channel_screen.dart';
-import '../status/presentation/option_appbar_screen/find_channels_screen.dart';
+import '../status/presentation/status_view_screen.dart';
+import '../status/provider/status_provider.dart';
+import 'dart:io';
 
 class ChatItem {
   final String initials;
@@ -171,37 +171,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
           if (_currentTabIndex == 0)
             IconButton(
               icon: Icon(Icons.camera_alt_outlined, color: AppTheme.primaryColor),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) => Container(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.camera_alt),
-                          title: const Text('Camera'),
-                          onTap: () async {
-                            Navigator.pop(context);
-                            final picker = ImagePicker();
-                            await picker.pickImage(source: ImageSource.camera);
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.photo_library),
-                          title: const Text('Gallery'),
-                          onTap: () async {
-                            Navigator.pop(context);
-                            final picker = ImagePicker();
-                            await picker.pickImage(source: ImageSource.gallery);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+              onPressed: () => _pickMediaForStatus(context),
             ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
@@ -373,9 +343,6 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         ];
       case 3: // Updates tab
         return const [
-          PopupMenuItem(value: 'status_privacy', child: Text('Status privacy')),
-          PopupMenuItem(value: 'create_channel', child: Text('Create channel')),
-          PopupMenuItem(value: 'find_channels', child: Text('Find channels')),
           PopupMenuItem(value: 'settings', child: Text('Settings')),
         ];
       default:
@@ -578,13 +545,16 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   Widget _buildCommunitiesTab() => const CommunitiesScreen();
 
   Widget _buildStatusTab() {
+    final statusProvider = Provider.of<StatusProvider>(context);
     return Container(
       color: Colors.grey[50],
       child: ListView(
         children: [
           _buildMyStatus(),
-          const Divider(height: 8, thickness: 8, color: Color(0xFFF0F0F0)),
-          _buildRecentUpdates(),
+          if (statusProvider.statuses.isNotEmpty) ...[
+            const Divider(height: 8, thickness: 8, color: Color(0xFFF0F0F0)),
+            _buildRecentUpdates(statusProvider),
+          ],
         ],
       ),
     );
@@ -631,15 +601,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     );
   }
 
-  Widget _buildRecentUpdates() {
-    final statuses = [
-      {'name': 'User 1', 'time': '1 minutes ago'},
-      {'name': 'User 2', 'time': '2 minutes ago'},
-      {'name': 'User 3', 'time': '3 minutes ago'},
-      {'name': 'User 4', 'time': '4 minutes ago'},
-      {'name': 'User 5', 'time': '5 minutes ago'},
-    ];
-
+  Widget _buildRecentUpdates(StatusProvider statusProvider) {
     return Container(
       color: Colors.white,
       child: Column(
@@ -649,13 +611,17 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             padding: EdgeInsets.all(16),
             child: Text('Recent updates', style: TextStyle(color: Colors.grey, fontSize: 14)),
           ),
-          ...statuses.map((status) => _buildStatusTile(status['name']!, status['time']!)),
+          ...statusProvider.statuses.map((status) => _buildStatusTile(
+            status.userName,
+            statusProvider.getTimeAgo(status.timestamp),
+            status.imagePath,
+          )),
         ],
       ),
     );
   }
 
-  Widget _buildStatusTile(String name, String time) {
+  Widget _buildStatusTile(String name, String time, String imagePath) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(2),
@@ -665,12 +631,22 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         ),
         child: CircleAvatar(
           radius: 26,
-          backgroundColor: Colors.grey[300],
-          child: Text(name[0], style: const TextStyle(fontSize: 18)),
+          backgroundImage: FileImage(File(imagePath)),
         ),
       ),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: Text(time, style: const TextStyle(color: Colors.grey)),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StatusViewScreen(
+              userName: name,
+              imagePath: imagePath,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -783,13 +759,21 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       'payments': const PaymentsScreen(),
       'schedule_call': const ScheduleCallScreen(),
       'clear_call_log': const ClearCallLogScreen(),
-      'status_privacy': const StatusPrivacyScreen(),
-      'create_channel': const CreateChannelScreen(),
-      'find_channels': const FindChannelsScreen(),
     };
     
     if (routes.containsKey(value)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => routes[value]!));
     }
   }
+final ImagePicker _picker = ImagePicker();
+
+void _pickMediaForStatus(BuildContext context) async {
+  final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+  
+  if (image != null) {
+    Provider.of<StatusProvider>(context, listen: false).addStatus(image.path);
+    _tabController.animateTo(3);  }
+}
+
+ 
 }

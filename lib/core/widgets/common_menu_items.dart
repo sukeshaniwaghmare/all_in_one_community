@@ -3,7 +3,6 @@ import '../../features/chat/presentation/widgets/chats_creen3/option_screen/crea
 import '../../features/contacts/presentation/select_contacts_screen.dart';
 import '../../features/calls/presentation/calls_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
-import '../../features/status/presentation/status_screen.dart';
 
 class CommonMenuItems {
   static List<PopupMenuEntry<String>> getChatMenuItems() {
@@ -52,9 +51,8 @@ class CommonMenuItems {
         );
         break;
       case 'status':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const StatusScreen()),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Status screen not implemented yet')),
         );
         break;
       default:
