@@ -65,7 +65,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Add group members', style: TextStyle(color: Colors.white, fontSize: 18)),
+            const Text('Add community members', style: TextStyle(color: Colors.white, fontSize: 18)),
             Text('${_selectedMembers.length} of ${_allMembers.length} selected', 
               style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ],
@@ -257,7 +257,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('New Group', style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: const Text('New Community', style: TextStyle(color: Colors.white, fontSize: 18)),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -295,7 +295,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
-                  hintText: 'Group name',
+                  hintText: 'Community name',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey[300]!),
@@ -363,7 +363,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Group "$groupName" created!'),
+                content: Text('Community "$groupName" created!'),
                 backgroundColor: Colors.green,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

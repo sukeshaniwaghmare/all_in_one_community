@@ -39,6 +39,15 @@ class ChatDataSource {
             .order('created_at', ascending: false)
             .limit(1);
         
+        // Count unread messages from this user
+        final unreadList = await _supabaseService.client
+            .from('messages')
+            .select('id')
+            .eq('sender_id', userId)
+            .eq('receiver_id', currentUserId)
+            .eq('is_read', false);
+        final unreadCount = unreadList.length;
+        
         final chat = Chat.fromUserProfile(user);
         
         if (lastMessageResponse.isNotEmpty) {
@@ -46,9 +55,10 @@ class ChatDataSource {
           chats.add(chat.copyWith(
             lastMessage: lastMsg['message'] ?? '',
             lastMessageTime: DateTime.parse(lastMsg['created_at']),
+            unreadCount: unreadCount,
           ));
         } else {
-          chats.add(chat);
+          chats.add(chat.copyWith(unreadCount: unreadCount));
         }
       }
       
@@ -59,11 +69,13 @@ class ChatDataSource {
             .select('group_id')
             .eq('user_id', currentUserId);
         
+        
         // Get unique group IDs to prevent duplicates
         final uniqueGroupIds = groupMembersResponse
             .map((gm) => gm['group_id'] as String)
             .toSet()
             .toList();
+        
         
         for (var groupId in uniqueGroupIds) {
           
@@ -74,6 +86,7 @@ class ChatDataSource {
               .eq('id', groupId)
               .single();
           
+          
           // Get last message for this group
           final lastGroupMessage = await _supabaseService.client
               .from('group_messages')
@@ -82,6 +95,9 @@ class ChatDataSource {
               .order('created_at', ascending: false)
               .limit(1);
           
+          // For groups, set unread count to 0 (group_messages table doesn't have is_read column)
+          final unreadGroupCount = 0;
+          
           final groupChat = Chat(
             id: groupId,
             name: groupResponse['name'] ?? 'Group',
@@ -89,7 +105,7 @@ class ChatDataSource {
             lastMessageTime: lastGroupMessage.isNotEmpty 
                 ? DateTime.parse(lastGroupMessage.first['created_at'])
                 : DateTime.parse(groupResponse['created_at']),
-            unreadCount: 0,
+            unreadCount: unreadGroupCount,
             isGroup: true,
             receiverUserId: groupId,
             profileImage: groupResponse['avatar_url'],

@@ -9,6 +9,8 @@ import '../../chat/presentation/widgets/chats_creen3/option_screen/advanced_chat
 import 'role_selection_dialog.dart';
 import 'package:provider/provider.dart';
 import '../provider/community_list_provider.dart';
+import '../provider/community_provider.dart';
+import '../../chat/provider/chat_provider.dart';
 
 class CommunityInfoScreen extends StatefulWidget {
   final String name;
@@ -40,6 +42,14 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
     super.initState();
     _groupName = widget.name;
     _loadGroupAvatar();
+    _loadFavoriteStatus();
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+    setState(() {
+      _isFavorite = communityProvider.isFavorite(_groupName);
+    });
   }
 
   Future<void> _loadGroupAvatar() async {
@@ -639,15 +649,27 @@ class _CommunityInfoScreenState extends State<CommunityInfoScreen> {
     }
   }
 
-  void _toggleFavorite() {
+  void _toggleFavorite() async {
+    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    
+    await communityProvider.toggleFavorite(_groupName);
+    
+    if (widget.groupId != null) {
+      await chatProvider.toggleFavorite(widget.groupId!);
+    }
+    
     setState(() {
-      _isFavorite = !_isFavorite;
+      _isFavorite = communityProvider.isFavorite(_groupName);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isFavorite ? 'Added to favorites' : 'Removed from favorites'),
-      ),
-    );
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isFavorite ? 'Added to favorites' : 'Removed from favorites'),
+        ),
+      );
+    }
   }
 
   void _clearChat() async {

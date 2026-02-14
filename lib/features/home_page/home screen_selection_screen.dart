@@ -324,7 +324,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     switch (_currentTabIndex) {
       case 0: // Chats tab
         return const [
-          PopupMenuItem(value: 'new_group', child: Text('New group')),
+          PopupMenuItem(value: 'new_group', child: Text('New community')),
           PopupMenuItem(value: 'new_community', child: Text('New community')),
           PopupMenuItem(value: 'broadcast_list', child: Text('Broadcast list')),
           PopupMenuItem(value: 'Linked Devices', child: Text('Linked devices')),
@@ -355,6 +355,14 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
 
   Widget _buildFilterChip(String label, {int? count}) {
     final isSelected = _selectedFilter == label;
+    final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
+    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+    
+    int? displayCount = count;
+    if (label == 'Favorites' && count == null) {
+      displayCount = chatProvider.favoriteChats.length + communityProvider.favoriteCommunities.length;
+    }
+    
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -366,7 +374,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            count != null && count > 0 ? '$label ($count)' : label,
+            displayCount != null && displayCount > 0 ? '$label ($displayCount)' : label,
             style: TextStyle(
               fontSize: 13,
               color: isSelected ? AppTheme.primaryColor : Colors.black87,
@@ -403,6 +411,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   List<ChatItem> _getFilteredChats(List<ChatItem> chats) {
     final listProvider = Provider.of<CommunityListProvider>(context, listen: false);
     final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
+    final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
     
     print('=== FILTER: $_selectedFilter ===');
     
@@ -415,8 +424,13 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         }
         return unreadChats;
       case 'Favorites':
-        final favoriteCommunities = listProvider.getCommunitiesByList('Favorite');
-        return chats.where((c) => favoriteCommunities.contains(c.name)).toList();
+        return chats.where((c) {
+          final actualChat = chatProvider.chats.firstWhere((chat) => chat.name == c.name, orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), receiverUserId: ''));
+          // Check both chat ID (for groups and users) and community name
+          return chatProvider.isFavorite(actualChat.id) || 
+                 chatProvider.isFavorite(actualChat.receiverUserId) || 
+                 communityProvider.isFavorite(c.name);
+        }).toList();
       case 'Commnunities':
         return chats.where((c) {
           final actualChat = chatProvider.chats.firstWhere((chat) => chat.name == c.name, orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), receiverUserId: ''));
@@ -728,6 +742,9 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
 
   void _showChatOptions(BuildContext context, String chatId, String chatName) {
+    final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
+    final isFavorite = chatProvider.isFavorite(chatId);
+    
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -735,6 +752,19 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: Icon(isFavorite ? Icons.star : Icons.star_border),
+              title: Text(isFavorite ? 'Remove from favorites' : 'Add to favorites'),
+              onTap: () async {
+                Navigator.pop(context);
+                await chatProvider.toggleFavorite(chatId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(isFavorite ? '$chatName removed from favorites' : '$chatName added to favorites')),
+                  );
+                }
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.archive),
               title: const Text('Archive chat'),

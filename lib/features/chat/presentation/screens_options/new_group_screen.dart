@@ -18,7 +18,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: const Color(0xFF075E54)),
-        title: Text('New Group', style: TextStyle(color: const Color(0xFF075E54))),
+        title: Text('New Community', style: TextStyle(color: const Color(0xFF075E54))),
         actions: [
           TextButton(
             onPressed: _selectedContacts.isNotEmpty && _groupNameController.text.trim().isNotEmpty
@@ -35,8 +35,8 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
             child: TextField(
               controller: _groupNameController,
               decoration: const InputDecoration(
-                labelText: 'Group name',
-                hintText: 'Enter group name',
+                labelText: 'Community name',
+                hintText: 'Enter community name',
                 border: OutlineInputBorder(),
               ),
               onChanged: (_) => setState(() {}),
@@ -80,7 +80,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   void _createGroup() {
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Group "${_groupNameController.text.trim()}" created with ${_selectedContacts.length} members!')),
+      SnackBar(content: Text('Community "${_groupNameController.text.trim()}" created with ${_selectedContacts.length} members!')),
     );
   }
 }

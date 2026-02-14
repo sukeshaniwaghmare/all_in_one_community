@@ -9,6 +9,8 @@ import '../../../core/services/auth_service.dart';
 import '../data/datasources/chat_datasource.dart';
 import '../../notifications/services/services/fcm_service.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class ChatProvider extends ChangeNotifier {
   final GetChatsUseCase getChatsUseCase;
@@ -24,6 +26,7 @@ class ChatProvider extends ChangeNotifier {
     required this.sendMessageUseCase,
   }) {
     _initializeRealtimeListeners();
+    _loadFavorites();
     // Subscribe to chat updates for current user
     final currentUserId = _authService.currentUserId;
     if (currentUserId != null) {
@@ -35,6 +38,7 @@ class ChatProvider extends ChangeNotifier {
   List<Chat> _chats = [];
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
+  Set<String> _favoriteChats = {};
 
   /// ✅ This is RECEIVER USER ID (UUID)
   String? _currentReceiverUserId;
@@ -45,6 +49,7 @@ class ChatProvider extends ChangeNotifier {
   List<Chat> get chats => _chats;
   List<ChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
+  Set<String> get favoriteChats => _favoriteChats;
 
   // -------------------- LOAD CHATS --------------------
 
@@ -523,6 +528,34 @@ class ChatProvider extends ChangeNotifier {
 
   void _sortChatsByRecent() {
     _chats.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+  }
+
+  // -------------------- FAVORITES --------------------
+
+  bool isFavorite(String chatId) => _favoriteChats.contains(chatId);
+
+  Future<void> toggleFavorite(String chatId) async {
+    if (_favoriteChats.contains(chatId)) {
+      _favoriteChats.remove(chatId);
+    } else {
+      _favoriteChats.add(chatId);
+    }
+    await _saveFavorites();
+    notifyListeners();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('favorite_chats');
+    if (json != null) {
+      _favoriteChats = Set<String>.from(jsonDecode(json));
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('favorite_chats', jsonEncode(_favoriteChats.toList()));
   }
 
   @override

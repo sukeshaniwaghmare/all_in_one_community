@@ -7,7 +7,7 @@ import '../../features/settings/presentation/settings_screen.dart';
 class CommonMenuItems {
   static List<PopupMenuEntry<String>> getChatMenuItems() {
     return [
-      const PopupMenuItem(value: 'new_group', child: Text('New Group')),
+      const PopupMenuItem(value: 'new_group', child: Text('New Community')),
       const PopupMenuItem(value: 'new_secret', child: Text('New Secret Chat')),
       const PopupMenuItem(value: 'contacts', child: Text('Contacts')),
       const PopupMenuItem(value: 'calls', child: Text('Calls')),
@@ -20,7 +20,7 @@ class CommonMenuItems {
       const PopupMenuItem(value: 'status', child: Text('Status')),
       const PopupMenuItem(value: 'calls', child: Text('Calls')),
       const PopupMenuItem(value: 'settings', child: Text('Settings')),
-      const PopupMenuItem(value: 'new_group', child: Text('New Group')),
+      const PopupMenuItem(value: 'new_group', child: Text('New Community')),
     ];
   }
 

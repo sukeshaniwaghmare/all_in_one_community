@@ -62,6 +62,21 @@ class _InfoScreenState extends State<InfoScreen> {
     _nameController = TextEditingController(text: _currentName);
     _descriptionController = TextEditingController(text: _currentDescription ?? '');
     _loadProfileData();
+    _loadFavoriteStatus();
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    if (widget.isGroup) {
+      final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+      setState(() {
+        _isFavorite = communityProvider.isFavorite(_currentName);
+      });
+    } else if (widget.receiverId != null) {
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      setState(() {
+        _isFavorite = chatProvider.isFavorite(widget.receiverId!);
+      });
+    }
   }
 
   Future<void> _loadProfileData() async {
@@ -271,7 +286,7 @@ class _InfoScreenState extends State<InfoScreen> {
             ),
           const SizedBox(height: 4),
           Text(
-            widget.isGroup ? 'Group · ${widget.memberCount} members' : 'Contact',
+            widget.isGroup ? 'Community · ${widget.memberCount} members' : 'Contact',
             style: const TextStyle(color: Colors.grey),
           ),
         ],
@@ -321,7 +336,7 @@ class _InfoScreenState extends State<InfoScreen> {
             )
           else
             Text(
-              _currentDescription ?? 'Add group description',
+              _currentDescription ?? 'Add community description',
               style: TextStyle(
                 color: _currentDescription == null ? const Color(0xFF128C7E) : Colors.black87,
                 fontWeight: _currentDescription == null ? FontWeight.w500 : FontWeight.normal,
@@ -443,7 +458,7 @@ class _InfoScreenState extends State<InfoScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Create Group',
+              'Create Community',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -453,8 +468,8 @@ class _InfoScreenState extends State<InfoScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.group_add, color: Color(0xFF128C7E)),
-            title: Text('Create group with ${widget.name}'),
-            subtitle: const Text('Start a new group conversation'),
+            title: Text('Create community with ${widget.name}'),
+            subtitle: const Text('Start a new community conversation'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
             onTap: () {
               Navigator.push(
@@ -505,7 +520,7 @@ class _InfoScreenState extends State<InfoScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Groups in common',
+              'Communities in common',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -626,15 +641,15 @@ class _InfoScreenState extends State<InfoScreen> {
           const Divider(height: 1),
         _SettingTile(
           icon: Icons.exit_to_app,
-          title: 'Exit group',
+          title: 'Exit community',
           iconColor: Colors.red,
           titleColor: Colors.red,
           onTap: () {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Exit group?'),
-                content: const Text('You will no longer receive messages from this group.'),
+                title: const Text('Exit community?'),
+                content: const Text('You will no longer receive messages from this community.'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -644,7 +659,7 @@ class _InfoScreenState extends State<InfoScreen> {
                     onPressed: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Left the group'), backgroundColor: Colors.red),
+                        const SnackBar(content: Text('Left the community'), backgroundColor: Colors.red),
                       );
                     },
                     child: const Text('Exit', style: TextStyle(color: Colors.red)),
@@ -657,7 +672,7 @@ class _InfoScreenState extends State<InfoScreen> {
         const Divider(height: 1),
         _SettingTile(
           icon: Icons.report,
-          title: 'Report Group',
+          title: 'Report Community',
           iconColor: Colors.red,
           titleColor: Colors.red,
           onTap: _reportContact,
@@ -699,7 +714,7 @@ class _InfoScreenState extends State<InfoScreen> {
       ),
       title: Text(isCurrentUser ? 'You' : fullName),
       subtitle: Text(
-        isAdmin ? 'Group admin' : bio,
+        isAdmin ? 'Community admin' : bio,
         style: TextStyle(color: isAdmin ? const Color(0xFF128C7E) : Colors.grey, fontSize: 12),
       ),
     );
@@ -772,8 +787,8 @@ class _InfoScreenState extends State<InfoScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Group'),
-        content: const Text('Are you sure you want to delete this group? This action cannot be undone.'),
+        title: const Text('Delete Community'),
+        content: const Text('Are you sure you want to delete this community? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -946,12 +961,12 @@ class _InfoScreenState extends State<InfoScreen> {
         communityProvider.updateContactName(_currentName, newName);
         
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Group info updated')),
+          const SnackBar(content: Text('Community info updated')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error updating group')),
+        const SnackBar(content: Text('Error updating community')),
       );
     }
   }
@@ -990,16 +1005,37 @@ class _InfoScreenState extends State<InfoScreen> {
     );
   }
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isFavorite ? 'Added to favorites' : 'Removed from favorites'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  void _toggleFavorite() async {
+    if (widget.isGroup) {
+      final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      
+      await communityProvider.toggleFavorite(_currentName);
+      
+      // Also toggle in chat provider if receiverId exists
+      if (widget.receiverId != null) {
+        await chatProvider.toggleFavorite(widget.receiverId!);
+      }
+      
+      setState(() {
+        _isFavorite = communityProvider.isFavorite(_currentName);
+      });
+    } else if (widget.receiverId != null) {
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.toggleFavorite(widget.receiverId!);
+      setState(() {
+        _isFavorite = chatProvider.isFavorite(widget.receiverId!);
+      });
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isFavorite ? 'Added to favorites' : 'Removed from favorites'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _showAddToListDialog() {
@@ -1130,7 +1166,7 @@ class _InfoScreenState extends State<InfoScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Group info updated')),
+      const SnackBar(content: Text('Community info updated')),
     );
 
     Navigator.pop(context);

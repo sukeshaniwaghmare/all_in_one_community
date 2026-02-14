@@ -5,6 +5,8 @@ import '../data/models/group_model.dart';
 import '../../chat/data/models/chat_model.dart';
 import '../../chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import 'community_info_screen.dart';
+import 'package:provider/provider.dart';
+import '../provider/community_provider.dart';
 
 class CommunitiesScreen extends StatefulWidget {
   const CommunitiesScreen({super.key});
@@ -102,20 +104,41 @@ class _CommunitiesScreenState extends State<CommunitiesScreen> {
                   ),
                   title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                   subtitle: Text('${group.memberCount} members', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.info_outline, color: Colors.grey),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CommunityInfoScreen(
-                            name: group.name,
-                            memberCount: group.memberCount,
-                            groupId: group.id,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Consumer<CommunityProvider>(
+                        builder: (context, provider, _) => IconButton(
+                          icon: Icon(
+                            provider.isFavorite(group.name) ? Icons.star : Icons.star_border,
+                            color: provider.isFavorite(group.name) ? Colors.amber : Colors.grey,
                           ),
+                          onPressed: () async {
+                            await provider.toggleFavorite(group.name);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(provider.isFavorite(group.name) ? '${group.name} added to favorites' : '${group.name} removed from favorites')),
+                              );
+                            }
+                          },
                         ),
-                      );
-                    },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.info_outline, color: Colors.grey),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommunityInfoScreen(
+                                name: group.name,
+                                memberCount: group.memberCount,
+                                groupId: group.id,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   onTap: () {
                     Navigator.push(

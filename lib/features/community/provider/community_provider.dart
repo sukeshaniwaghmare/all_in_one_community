@@ -14,17 +14,20 @@ class CommunityProvider extends ChangeNotifier {
   
   CommunityProvider(this._repository) {
     _loadGroups();
+    _loadFavorites();
   }
 
   CommunityType? _selectedCommunity;
   List<MemberEntity> _members = [];
   bool _isLoading = false;
   int _memberCount = 0;
+  Set<String> _favoriteCommunities = {};
 
   CommunityType? get selectedCommunity => _selectedCommunity;
   List<MemberEntity> get members => _members;
   bool get isLoading => _isLoading;
   int get memberCount => _memberCount;
+  Set<String> get favoriteCommunities => _favoriteCommunities;
 
   final List<ChatEntity> _chats = [];
 
@@ -177,5 +180,33 @@ class CommunityProvider extends ChangeNotifier {
       notifyListeners();
       print('Updated contact name from $oldName to $newName in CommunityProvider');
     }
+  }
+
+  // -------------------- FAVORITES --------------------
+
+  bool isFavorite(String communityName) => _favoriteCommunities.contains(communityName);
+
+  Future<void> toggleFavorite(String communityName) async {
+    if (_favoriteCommunities.contains(communityName)) {
+      _favoriteCommunities.remove(communityName);
+    } else {
+      _favoriteCommunities.add(communityName);
+    }
+    await _saveFavorites();
+    notifyListeners();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('favorite_communities');
+    if (json != null) {
+      _favoriteCommunities = Set<String>.from(jsonDecode(json));
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('favorite_communities', jsonEncode(_favoriteCommunities.toList()));
   }
 }
