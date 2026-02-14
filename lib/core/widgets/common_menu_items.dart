@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../features/chat/presentation/widgets/chats_creen3/option_screen/create_group_screen.dart';
+import '../../features/chat/presentation/widgets/chats_creen3/option_screen/create_community_screen.dart';
 import '../../features/contacts/presentation/select_contacts_screen.dart';
 import '../../features/calls/presentation/call_history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
@@ -29,7 +29,7 @@ class CommonMenuItems {
       case 'new_group':
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const CreateGroupScreen()),
+          MaterialPageRoute(builder: (context) => const CreateCommunityScreen()),
         );
         break;
       case 'contacts':

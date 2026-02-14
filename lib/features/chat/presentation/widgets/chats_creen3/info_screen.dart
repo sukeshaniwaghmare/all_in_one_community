@@ -2,7 +2,7 @@ import '../../../../calls/services/call_service.dart';
 import '../../../../calls/domain/entities/call.dart';
 import 'package:all_in_one_community/features/chat/presentation/widgets/chats_creen3/edit_infoscreen_screen.dart';
 import 'package:flutter/material.dart';
-import 'option_screen/create_group_screen.dart';
+import 'option_screen/create_community_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../../community/provider/community_provider.dart';
 import '../../../provider/chat_provider.dart';
@@ -475,7 +475,7 @@ class _InfoScreenState extends State<InfoScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => CreateGroupScreen(preSelectedContact: widget.name),
+                  builder: (context) => CreateCommunityScreen(preSelectedContact: widget.name),
                 ),
               );
             },

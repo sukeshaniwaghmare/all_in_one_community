@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../provider/contact_provider.dart';
 import '../models/contact_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../chat/presentation/widgets/chats_creen3/option_screen/create_community_screen.dart';
 
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
@@ -182,8 +183,15 @@ class _ContactsScreenState extends State<ContactsScreen> {
               backgroundColor: AppTheme.primaryColor,
               child: Icon(Icons.group_add, color: Colors.white),
             ),
-            title: const Text('New group'),
-            onTap: () {},
+            title: const Text('New community'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateCommunityScreen(),
+                ),
+              );
+            },
           ),
           ListTile(
             leading: const CircleAvatar(

@@ -4,16 +4,16 @@ import 'package:provider/provider.dart';
 import '../../../../provider/chat_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CreateGroupScreen extends StatefulWidget {
+class CreateCommunityScreen extends StatefulWidget {
   final String? preSelectedContact;
   
-  const CreateGroupScreen({super.key, this.preSelectedContact});
+  const CreateCommunityScreen({super.key, this.preSelectedContact});
 
   @override
-  State<CreateGroupScreen> createState() => _CreateGroupScreenState();
+  State<CreateCommunityScreen> createState() => _CreateCommunityScreenState();
 }
 
-class _CreateGroupScreenState extends State<CreateGroupScreen> {
+class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
   final TextEditingController _searchController = TextEditingController();
   final List<Member> _selectedMembers = [];
   List<Member> _allMembers = [];
