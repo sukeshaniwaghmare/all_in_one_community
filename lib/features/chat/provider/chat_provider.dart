@@ -334,7 +334,6 @@ class ChatProvider extends ChangeNotifier {
       final chatIndex = _chats.indexWhere((chat) => chat.receiverUserId == receiverUserId);
       if (chatIndex != -1) {
         _chats[chatIndex] = _chats[chatIndex].copyWith(unreadCount: 0);
-        print('✅ Reset unread count for chat: ${_chats[chatIndex].name}');
         notifyListeners();
       }
     } catch (e) {
@@ -396,12 +395,7 @@ class ChatProvider extends ChangeNotifier {
   void _handleNewMessage(Map<String, dynamic> data) async {
     final currentUserId = _authService.currentUserId;
 
-    print('📨 [REALTIME] New message received:');
-    print('   Sender: ${data['sender_id']}');
-    print('   Receiver: ${data['receiver_id']}');
-    print('   Message: ${data['message']}');
-    print('   Current User: $currentUserId');
-    print('   Current Chat: $_currentReceiverUserId');
+ 
 
     // Check if message is for current chat
     final isForCurrentChat = 
@@ -409,7 +403,6 @@ class ChatProvider extends ChangeNotifier {
         (data['sender_id'] == currentUserId && data['receiver_id'] == _currentReceiverUserId);
     
     if (!isForCurrentChat) {
-      print('   ❌ Message not for current chat - ignoring');
       return;
     }
 
@@ -501,7 +494,6 @@ class ChatProvider extends ChangeNotifier {
     print('   Chat index found: $index');
 
     if (index == -1) {
-      print('   ❌ Chat not found in list!');
       return;
     }
 
@@ -509,10 +501,7 @@ class ChatProvider extends ChangeNotifier {
     final isFromOtherUser = data['sender_id'] != currentUserId;
     final newUnreadCount = isFromOtherUser ? chat.unreadCount + 1 : chat.unreadCount;
 
-    print('   Chat: ${chat.name}');
-    print('   From other user: $isFromOtherUser');
-    print('   Old unread: ${chat.unreadCount}');
-    print('   New unread: $newUnreadCount');
+  
 
     _chats[index] = chat.copyWith(
       lastMessage: data['message'],

@@ -1,10 +1,47 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/supabase_service.dart';
-import '../models/group_model.dart';
 import '../models/member_model.dart';
+import '../models/community_model.dart';
+import '../../../groups/data/models/group_model.dart' as groupsModel;
 
 class CommunityDataSource {
   final _supabase = SupabaseService.instance.client;
+
+  Future<List<CommunityModel>> fetchAllCommunities() async {
+    final response = await _supabase
+        .from('communities')
+        .select()
+        .order('created_at', ascending: false);
+
+    print('Fetched communities: $response');
+    
+    return (response as List)
+        .map((json) => CommunityModel.fromJson({
+          ...json,
+          'member_count': json['member_count'] ?? 0,
+        }))
+        .toList();
+  }
+
+  Future<List<groupsModel.GroupModel>> fetchGroupsByCommunity(String communityId) async {
+    try {
+      final response = await _supabase
+          .from('groups')
+          .select('*')
+          .eq('community_id', communityId)
+          .order('created_at', ascending: false);
+
+      return (response as List)
+          .map((json) => groupsModel.GroupModel.fromJson({
+            ...json,
+            'member_count': json['member_count'] ?? 0,
+          }))
+          .toList();
+    } catch (e) {
+      print('Error fetching groups: $e');
+      return [];
+    }
+  }
 
   Future<List<MemberModel>> fetchMembers() async {
     try {
@@ -35,31 +72,30 @@ class CommunityDataSource {
     }
   }
 
-  Future<List<GroupModel>> fetchAllGroups() async {
+  Future<List<groupsModel.GroupModel>> fetchAllGroups() async {
     final response = await _supabase
         .from('groups')
         .select()
         .order('created_at', ascending: false);
 
-    final groups = <GroupModel>[];
+    final groupsList = <groupsModel.GroupModel>[];
     
     for (var json in response as List) {
       final groupId = json['id'] as String;
       
-      // Fetch member count for each group
       final memberCountResponse = await _supabase
           .from('group_members')
           .select('id')
           .eq('group_id', groupId)
           .count(CountOption.exact);
       
-      groups.add(GroupModel.fromJson({
+      groupsList.add(groupsModel.GroupModel.fromJson({
         ...json,
         'member_count': memberCountResponse.count ?? 0,
       }));
     }
     
-    return groups;
+    return groupsList;
   }
 
   Future<void> updateMemberRole({

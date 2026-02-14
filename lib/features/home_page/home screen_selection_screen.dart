@@ -2,25 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../community/provider/community_provider.dart';
 import '../community/provider/community_list_provider.dart';
-import 'community_sidebar.dart';
+import 'sidebar.dart';
 import '../community/presentation/communities_screen.dart';
-import '../community/presentation/community_info_screen.dart';
+import '../community/presentation/new_community_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../chat/data/models/chat_model.dart';
 import '../chat/provider/chat_provider.dart' as chat;
 import '../calls/presentation/call_history_screen.dart';
 import '../contacts/presentation/select_contacts_screen.dart';
-import '../chat/presentation/screens_options/settings_screen.dart';
+import 'kebab _menu⋮/settings_screen.dart';
 import '../archived/presentation/archived_chats_screen.dart';
 import '../archived/provider/archived_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import '../chat/presentation/screens_options/new_group_screen.dart';
-import '../chat/presentation/screens_options/new_community_screen.dart';
-import '../chat/presentation/screens_options/broadcast_list_screen.dart';
-import '../chat/presentation/screens_options/linked_devices_screen.dart';
-import '../chat/presentation/screens_options/starred_messages_screen.dart';
-import '../chat/presentation/screens_options/payments_screen.dart';
+import 'kebab _menu⋮/broadcast_list_screen.dart';
+import 'kebab _menu⋮/linked_devices_screen.dart';
+import 'kebab _menu⋮/starred_messages_screen.dart';
 import '../calls/presentation/appbar_option_screen/schedule_call_screen.dart';
 import '../status/presentation/status_view_screen.dart';
 import '../status/provider/status_provider.dart';
@@ -113,9 +111,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
           )).toList();
 
     // Debug: Print all chats with their unread counts
-    print('=== ALL CHATS ===');
     for (var chat in chats) {
-      print('Chat: ${chat.name}, Unread: ${chat.unread}');
     }
 
     if (_searchController.text.isNotEmpty) {
@@ -225,7 +221,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                   _buildFilterChip('All'),
                   _buildFilterChip('Unread', count: chats.where((c) => c.unread > 0).length),
                   _buildFilterChip('Favorites'),
-                  _buildFilterChip('Commnunities'),
+                  _buildFilterChip('Groups'),
                   _buildFilterChip('Follow Up'),
                   _buildFilterChip('Lead'),
                   _buildAddListButton(),
@@ -316,7 +312,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       case 3:
         return 'Updates';
       default:
-        return 'Community';
+        return 'Chats';
     }
   }
 
@@ -324,12 +320,12 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     switch (_currentTabIndex) {
       case 0: // Chats tab
         return const [
-          PopupMenuItem(value: 'new_group', child: Text('New community')),
+          PopupMenuItem(value: 'new_group', child: Text('New group')),
           PopupMenuItem(value: 'new_community', child: Text('New community')),
           PopupMenuItem(value: 'broadcast_list', child: Text('Broadcast list')),
           PopupMenuItem(value: 'Linked Devices', child: Text('Linked devices')),
           PopupMenuItem(value: 'Starred', child: Text('Starred messages')),
-          PopupMenuItem(value: 'payments', child: Text('Payments')),
+          PopupMenuItem(value: 'Read all', child: Text('Read all')),
           PopupMenuItem(value: 'settings', child: Text('Settings')),
         ];
       case 1: // Communities tab
@@ -413,14 +409,11 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
     final communityProvider = Provider.of<CommunityProvider>(context, listen: false);
     
-    print('=== FILTER: $_selectedFilter ===');
     
     switch (_selectedFilter) {
       case 'Unread':
         final unreadChats = chats.where((c) => c.unread > 0).toList();
-        print('Unread filter: Found ${unreadChats.length} chats with unread messages');
         for (var chat in unreadChats) {
-          print('  - ${chat.name}: ${chat.unread} unread');
         }
         return unreadChats;
       case 'Favorites':
@@ -431,7 +424,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                  chatProvider.isFavorite(actualChat.receiverUserId) || 
                  communityProvider.isFavorite(c.name);
         }).toList();
-      case 'Commnunities':
+      case 'Groups':
         return chats.where((c) {
           final actualChat = chatProvider.chats.firstWhere((chat) => chat.name == c.name, orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), receiverUserId: ''));
           return actualChat.isGroup;
@@ -792,7 +785,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       'broadcast_list': const BroadcastListScreen(),
       'Linked Devices': const LinkedDevicesScreen(),
       'Starred': const StarredMessagesScreen(),
-      'payments': const PaymentsScreen(),
+     
       'schedule_call': const ScheduleCallScreen(),
     };
     

@@ -1,4 +1,7 @@
-import 'package:all_in_one_community/features/community/presentation/member_options_bottom_sheet.dart';
+import 'package:all_in_one_community/features/groups/presentation/member_options_bottom_sheet.dart';
+import 'package:all_in_one_community/features/groups/presentation/role_selection_dialog.dart';
+import 'package:all_in_one_community/features/community/provider/community_list_provider.dart';
+import 'package:all_in_one_community/features/community/provider/community_provider.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,10 +9,7 @@ import '../../chat/presentation/widgets/chat_screen2/option_screen/media_screen.
 import '../../notifications/presentation/notification_screen.dart';
 import '../../chat/presentation/widgets/chats_creen3/option_screen/disappearing_messages_screen_infoscreen.dart';
 import '../../chat/presentation/widgets/chats_creen3/option_screen/advanced_chat_privacy_screen_infoscreen .dart';
-import 'role_selection_dialog.dart';
 import 'package:provider/provider.dart';
-import '../provider/community_list_provider.dart';
-import '../provider/community_provider.dart';
 import '../../chat/provider/chat_provider.dart';
 
 class CommunityInfoScreen extends StatefulWidget {

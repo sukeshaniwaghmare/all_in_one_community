@@ -1,5 +1,6 @@
 import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/chat_screen.dart';
 import 'package:all_in_one_community/features/chat/presentation/widgets/chat_screen2/message_bubble.dart';
+import 'package:all_in_one_community/features/groups/presentation/group_details_screen.dart';
 import 'package:all_in_one_community/features/notifications/services/notification_service.dart' as local_notifications;
 import 'package:all_in_one_community/features/notifications/services/services/fcm_service.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +18,6 @@ import 'option_screen/media_screen.dart';
 import 'option_screen/disappearing_messages_screen.dart';
 import 'option_screen/chat_theme_screen.dart';
 import '../chats_creen3/info_screen.dart';
-import '../../../../community/presentation/community_info_screen.dart';
 import 'image_picker_screen.dart';
 import '../../../../calls/services/call_service.dart';
 import '../../../../calls/domain/entities/call.dart';
@@ -332,7 +332,21 @@ class _ChatDetailScreenState extends State<ChatScreen> {
             icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
             onSelected: (value) {
               // LOGIC: Handle menu selection
-              if (value == 'media') {
+              if (value == 'new_community') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('New community')),
+                );
+              } else if (value == 'view_contact') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('View contact')),
+                );
+              } else if (value == 'search') {
+                setState(() => _isSearching = true);
+              } else if (value == 'mute') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Mute notification')),
+                );
+              } else if (value == 'media') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => MediaScreen(
                   chatName: widget.chat.name,
                   receiverUserId: widget.chat.receiverUserId,
@@ -353,6 +367,47 @@ class _ChatDetailScreenState extends State<ChatScreen> {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'new_community',
+                child: Row(
+                  children: [
+                    Icon(Icons.group_add),
+                    SizedBox(width: 12),
+                    Text('New community'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'view_contact',
+                child: Row(
+                  children: [
+                    Icon(Icons.contacts),
+                    SizedBox(width: 12),
+                    Text('View contact'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'search',
+                child: Row(
+                  children: [
+                    Icon(Icons.search),
+                    SizedBox(width: 12),
+                    Text('Search'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'mute',
+                child: Row(
+                  children: [
+                    Icon(Icons.notifications_off),
+                    SizedBox(width: 12),
+                    Text('Mute notification'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'media',
                 child: Row(
@@ -736,6 +791,26 @@ class _ChatDetailScreenState extends State<ChatScreen> {
       context: context,
       position: const RelativeRect.fromLTRB(1000, 80, 0, 0),
       items: [
+        const PopupMenuItem(
+          value: 'Report',
+          child: Row(
+            children: [
+              Icon(Icons.delete_sweep),
+              SizedBox(width: 12),
+              Text('Report'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'Block',
+          child: Row(
+            children: [
+              Icon(Icons.delete_sweep),
+              SizedBox(width: 12),
+              Text('Block'),
+            ],
+          ),
+        ),
         const PopupMenuItem(
           value: 'clear',
           child: Row(

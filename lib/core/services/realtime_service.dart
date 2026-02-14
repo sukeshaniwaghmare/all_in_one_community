@@ -26,7 +26,6 @@ class RealtimeService {
     final currentUserId = _authService.currentUserId;
     if (currentUserId == null) return;
     
-    print('📡 Subscribing to messages for chat: $chatId');
     
     _messagesChannel?.unsubscribe();
     

@@ -20,7 +20,8 @@ class CommunityRepositoryImpl implements CommunityRepository {
 
   @override
   Future<List<GroupEntity>> getAllGroups() async {
-    return await dataSource.fetchAllGroups();
+    final groups = await dataSource.fetchAllGroups();
+    return groups.cast<GroupEntity>();
   }
 
   @override

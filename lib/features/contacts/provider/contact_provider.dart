@@ -233,7 +233,6 @@ Future<void> inviteContact(Contact contact) async {
         ),
       );
     } catch (e) {
-      debugPrint('Error starting chat: $e');
     }
   }
 }

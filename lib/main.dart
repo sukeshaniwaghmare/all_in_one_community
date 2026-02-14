@@ -10,6 +10,7 @@ import 'features/community/provider/community_provider.dart';
 import 'features/community/provider/community_list_provider.dart';
 import 'features/community/data/datasources/community_datasource.dart';
 import 'features/community/data/repositories/community_repository_impl.dart';
+import 'features/groups/provider/group_provider.dart';
 import 'features/chat/provider/chat_provider.dart';
 import 'features/chat/provider/unread_count_provider.dart';
 import 'features/chat/data/datasources/chat_datasource.dart';
@@ -92,6 +93,7 @@ class CommunityApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
         ChangeNotifierProvider(create: (context) => ContactProvider()),
         ChangeNotifierProvider(create: (context) => StatusProvider()),
+        ChangeNotifierProvider(create: (context) => GroupProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

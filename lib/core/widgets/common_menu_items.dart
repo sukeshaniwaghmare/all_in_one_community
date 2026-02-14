@@ -26,7 +26,7 @@ class CommonMenuItems {
 
   static void handleMenuSelection(BuildContext context, String value) {
     switch (value) {
-      case 'new_group':
+      case 'new_community':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CreateCommunityScreen()),

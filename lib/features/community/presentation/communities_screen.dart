@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/datasources/community_datasource.dart';
-import '../data/models/group_model.dart';
-import '../../chat/data/models/chat_model.dart';
-import '../../chat/presentation/widgets/chat_screen2/chat_screen.dart';
-import 'community_info_screen.dart';
+import '../data/models/community_model.dart';
+import 'community_detail_screen.dart';
+import 'new_community_screen.dart';
 import 'package:provider/provider.dart';
 import '../provider/community_provider.dart';
 
@@ -17,32 +16,29 @@ class CommunitiesScreen extends StatefulWidget {
 
 class _CommunitiesScreenState extends State<CommunitiesScreen> {
   final _dataSource = CommunityDataSource();
-  List<GroupModel> _groups = [];
+  List<CommunityModel> _communities = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadGroups();
+    print('CommunitiesScreen initState called');
+    _loadCommunities();
   }
 
-  Future<void> _loadGroups() async {
+  Future<void> _loadCommunities() async {
+    print('Loading communities...');
     try {
-      print('Fetching groups...');
-      final groups = await _dataSource.fetchAllGroups();
-      print('Groups fetched: ${groups.length}');
+      final communities = await _dataSource.fetchAllCommunities();
+      print('Loaded ${communities.length} communities');
       setState(() {
-        _groups = groups;
+        _communities = communities;
         _isLoading = false;
       });
-    } catch (e) {
-      print('Error loading groups: $e');
+    } catch (e, stackTrace) {
+      print('Error loading communities: $e');
+      print('Stack trace: $stackTrace');
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
     }
   }
 
@@ -52,118 +48,103 @@ class _CommunitiesScreenState extends State<CommunitiesScreen> {
       return Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
 
-    return ListView(
-      children: [
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: Stack(
-            children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.grey[300],
-                child: Icon(Icons.groups, color: Colors.grey[600], size: 28),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: CircleAvatar(
-                  radius: 10,
-                  backgroundColor: AppTheme.primaryColor,
-                  child: const Icon(Icons.add, color: Colors.white, size: 14),
-                ),
-              ),
-            ],
-          ),
-          title: const Text('New community', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Create new community')),
-            );
-          },
-        ),
-        const Divider(height: 1),
-        if (_groups.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(child: Text('No groups found', style: TextStyle(color: Colors.grey))),
-          )
-        else
-          ...List.generate(_groups.length, (index) {
-            final group = _groups[index];
-            return Column(
-              children: [
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: CircleAvatar(
-                    radius: 26,
-                    backgroundColor: AppTheme.primaryColor,
-                    backgroundImage: group.avatarUrl != null ? NetworkImage(group.avatarUrl!) : null,
-                    child: group.avatarUrl == null
-                        ? Text(group.name[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600))
-                        : null,
+    return Container(
+      color: Colors.grey[50],
+      child: ListView(
+        children: [
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16),
+            child: InkWell(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NewCommunityScreen()),
+                );
+                if (result == true) {
+                  _loadCommunities();
+                }
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.groups, color: Colors.grey[600], size: 28),
                   ),
-                  title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                  subtitle: Text('${group.memberCount} members', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('New community', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        SizedBox(height: 2),
+                        Text('Bring together a neighbourhood, school, and more', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_communities.isEmpty)
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(32),
+              child: const Center(child: Text('No communities yet', style: TextStyle(color: Colors.grey))),
+            )
+          else
+            Container(
+              color: Colors.white,
+              child: Column(
+                children: List.generate(_communities.length, (index) {
+                  final community = _communities[index];
+                  return Column(
                     children: [
-                      Consumer<CommunityProvider>(
-                        builder: (context, provider, _) => IconButton(
-                          icon: Icon(
-                            provider.isFavorite(group.name) ? Icons.star : Icons.star_border,
-                            color: provider.isFavorite(group.name) ? Colors.amber : Colors.grey,
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          onPressed: () async {
-                            await provider.toggleFavorite(group.name);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(provider.isFavorite(group.name) ? '${group.name} added to favorites' : '${group.name} removed from favorites')),
-                              );
-                            }
-                          },
+                          child: Center(
+                            child: Text(community.icon ?? community.name[0].toUpperCase(), style: const TextStyle(fontSize: 28)),
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.info_outline, color: Colors.grey),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CommunityInfoScreen(
-                                name: group.name,
-                                memberCount: group.memberCount,
-                                groupId: group.id,
-                              ),
+                        title: Text(community.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                        subtitle: Text('${community.memberCount} members', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                        trailing: Consumer<CommunityProvider>(
+                          builder: (context, provider, _) => IconButton(
+                            icon: Icon(
+                              provider.isFavorite(community.id) ? Icons.star : Icons.star_border,
+                              color: provider.isFavorite(community.id) ? Colors.amber : Colors.grey,
                             ),
-                          );
+                            onPressed: () async {
+                              await provider.toggleFavorite(community.id);
+                            },
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => CommunityDetailScreen(community: community)));
                         },
                       ),
+                      if (index < _communities.length - 1) const Divider(height: 1, indent: 78),
                     ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatScreen(
-                          chat: Chat(
-                            id: group.id,
-                            name: group.name,
-                            lastMessage: '',
-                            lastMessageTime: DateTime.now(),
-                            isGroup: true,
-                            receiverUserId: group.id,
-                            profileImage: group.avatarUrl,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                if (index < _groups.length - 1) const Divider(height: 1, indent: 72),
-            ],
-            );
-          }),
-      ],
+                  );
+                }),
+              ),
+            ),
+        ],
+      ),
     );
   }
-  }
+}
