@@ -19,6 +19,8 @@ import 'option_screen/chat_theme_screen.dart';
 import '../chats_creen3/info_screen.dart';
 import '../../../../community/presentation/community_info_screen.dart';
 import 'image_picker_screen.dart';
+import '../../../../calls/services/call_service.dart';
+import '../../../../calls/domain/entities/call.dart';
 
 // ==================== UTILITY EXTENSION ====================
 extension StringExtension on String {
@@ -58,25 +60,34 @@ class _ChatDetailScreenState extends State<ChatScreen> {
     _chatProvider = context.read<ChatProvider>();
     _loadAvatar();
 
-    // LOGIC: Set current chat to prevent notifications
+
+
     FCMService.setCurrentChat(widget.chat.receiverUserId);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // LOGIC: Load messages from database
+ 
       await _chatProvider.loadMessages(widget.chat.receiverUserId);
-
-      // LOGIC: Mark messages as delivered
+      
       await _chatProvider.markMessagesAsDelivered(widget.chat.receiverUserId);
-
-      // LOGIC: Mark messages as read
       await _chatProvider.markMessagesAsRead(widget.chat.receiverUserId);
-
-      // LOGIC: Listen for new messages and auto-scroll
-      _chatProvider.addListener(_scrollToBottom);
-
-      // LOGIC: Clear notification badge
+      _chatProvider.addListener(_onMessagesChanged);
       local_notifications.NotificationService.clearBadge();
+      
+      if (mounted) {
+        setState(() {});
+      }
     });
+  }
+
+  void _startPeriodicRefresh() {
+    // Disabled - using realtime instead
+  }
+
+  void _onMessagesChanged() {
+    if (mounted) {
+      setState(() {});
+      _scrollToBottom();
+    }
   }
 
   Future<void> _loadAvatar() async {
@@ -93,7 +104,6 @@ class _ChatDetailScreenState extends State<ChatScreen> {
           });
         }
       } catch (e) {
-        print('Error loading avatar: $e');
       }
     } else {
       // Load group avatar
@@ -109,7 +119,6 @@ class _ChatDetailScreenState extends State<ChatScreen> {
           });
         }
       } catch (e) {
-        print('Error loading group avatar: $e');
       }
     }
   }
@@ -167,7 +176,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                           .eq('group_id', widget.chat.receiverUserId);
                       memberCount = members.length;
                     } catch (e) {
-                      print('Error fetching member count: $e');
+                      
                     }
                     
                     Navigator.push(
@@ -189,6 +198,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                           memberCount: 0,
                           isGroup: false,
                           groupId: null,
+                          receiverId: widget.chat.receiverUserId,
                         ),
                       ),
                     );
@@ -236,9 +246,7 @@ class _ChatDetailScreenState extends State<ChatScreen> {
             padding: EdgeInsets.only(right: 0),
             constraints: BoxConstraints(),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Starting video call...')),
-              );
+              CallService.makeCall(context, widget.chat.receiverUserId, CallType.video);
             },
           ),
           Transform.translate(
@@ -248,13 +256,9 @@ class _ChatDetailScreenState extends State<ChatScreen> {
               icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
             onSelected: (value) {
               if (value == 'voice_call') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Starting voice call...')),
-                );
+                CallService.makeCall(context, widget.chat.receiverUserId, CallType.audio);
               } else if (value == 'video_call') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Starting video call...')),
-                );
+                CallService.makeCall(context, widget.chat.receiverUserId, CallType.video);
               } else if (value == 'select_people') {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Select people for call')),
@@ -400,15 +404,12 @@ class _ChatDetailScreenState extends State<ChatScreen> {
         children: [
           // UI: Messages list
           Expanded(
-            child: Consumer<ChatProvider>(
-              builder: (context, chatProvider, child) {
-                // UI: Loading state
-                if (chatProvider.isLoading) {
+            child: Builder(
+              builder: (context) {
+                if (_chatProvider.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
-                // UI: Empty state
-                if (chatProvider.messages.isEmpty) {
+                if (_chatProvider.messages.isEmpty) {
                   return const Center(
                     child: Text(
                       'No messages yet\nStart the conversation!',
@@ -417,44 +418,14 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                     ),
                   );
                 }
-
-                // Filter messages based on search query
-                final filteredMessages = _searchQuery.isEmpty
-                    ? chatProvider.messages
-                    : chatProvider.messages.where((msg) {
-                        return msg.text.toLowerCase().contains(_searchQuery);
-                      }).toList();
-
-                // Show no results message
-                if (filteredMessages.isEmpty && _searchQuery.isNotEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                        SizedBox(height: 16),
-                        Text(
-                          'No messages found',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 18),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Try different keywords',
-                          style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // UI: Messages list
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
-                  itemCount: filteredMessages.length,
+                  itemCount: _chatProvider.messages.length,
                   itemBuilder: (context, index) {
+                    final msg = _chatProvider.messages[index];
                     return MessageBubble(
-                      message: filteredMessages[index],
+                      message: msg,
                       theme: _selectedTheme,
                     );
                   },
@@ -561,15 +532,29 @@ class _ChatDetailScreenState extends State<ChatScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          onPressed: () {
-                            // LOGIC: Send message
+                          onPressed: () async {
                             if (_messageController.text.trim().isNotEmpty) {
                               final message = _messageController.text.trim();
-                              context.read<ChatProvider>().sendMessage(
-                                message,
-                                widget.chat.receiverUserId,
-                              );
                               _messageController.clear();
+                              
+                           
+                              
+                              try {
+                                await context.read<ChatProvider>().sendMessage(
+                                  message,
+                                  widget.chat.receiverUserId,
+                                );
+                                
+                                await Future.delayed(Duration(milliseconds: 500));
+                                await context.read<ChatProvider>().loadMessages(widget.chat.receiverUserId);
+                              } catch (e) {
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to send message'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
                           },
                           icon: const Icon(Icons.send, color: Colors.white),
@@ -589,11 +574,9 @@ class _ChatDetailScreenState extends State<ChatScreen> {
   // ==================== LIFECYCLE: DISPOSE ====================
   @override
   void dispose() {
-    // LOGIC: Clear current chat
     FCMService.setCurrentChat(null);
-    
     _refreshTimer?.cancel();
-    _chatProvider.removeListener(_scrollToBottom);
+    _chatProvider.removeListener(_onMessagesChanged);
     _messageController.dispose();
     _searchController.dispose();
     _scrollController.dispose();

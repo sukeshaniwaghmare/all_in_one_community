@@ -6,7 +6,7 @@ import '../../core/theme/theme_provider.dart';
 import '../profile/provider/profile_provider.dart';
 import '../profile/presentation/profile_screen.dart';
 import '../settings/presentation/settings_screen.dart';
-import '../calls/presentation/calls_screen.dart';
+import '../calls/presentation/call_history_screen.dart';
 import '../contacts/presentation/select_contacts_screen.dart';
 
 class CommunityDrawer extends StatelessWidget {
@@ -41,7 +41,7 @@ class CommunityDrawer extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const CallsScreen()),
+                MaterialPageRoute(builder: (_) => const CallHistoryScreen()),
               );
             }),
             _menuItem(Icons.bookmark_border, 'Saved Messages', context),

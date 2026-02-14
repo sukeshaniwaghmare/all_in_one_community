@@ -1,183 +1,182 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import '../../../core/supabase_service.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
+import '../domain/entities/call.dart';
+import '../domain/repositories/call_repository.dart';
+import '../services/webrtc_service.dart';
 
-class CallItem {
-  final String id;
-  final String name;
-  final String phoneNumber;
-  final DateTime time;
-  final String type; // 'incoming', 'outgoing', 'missed'
-  final bool isVideo;
-  final String avatar;
-  final Color color;
+class CallProvider extends ChangeNotifier {
+  final CallRepository _callRepository;
+  final WebRTCService _webrtcService;
+  
+  CallProvider(this._callRepository, this._webrtcService);
 
-  CallItem({
-    required this.id,
-    required this.name,
-    required this.phoneNumber,
-    required this.time,
-    required this.type,
-    required this.isVideo,
-    required this.avatar,
-    required this.color,
-  });
-}
+  Call? _currentCall;
+  bool _isCallActive = false;
+  bool _isMuted = false;
+  bool _isVideoEnabled = true;
+  StreamSubscription? _callSubscription;
+  StreamSubscription? _iceCandidateSubscription;
+  StreamSubscription? _incomingCallSubscription;
+  StreamSubscription? _webrtcIceCandidateSubscription;
 
-class CallProvider with ChangeNotifier {
-  List<CallItem> _calls = [];
+  Call? get currentCall => _currentCall;
+  bool get isCallActive => _isCallActive;
+  bool get isMuted => _isMuted;
+  bool get isVideoEnabled => _isVideoEnabled;
+  MediaStream? get localStream => _webrtcService.localStream;
+  Stream<MediaStream> get remoteStream => _webrtcService.remoteStream;
 
-  List<CallItem> get calls => _calls;
-
-  CallProvider() {
-    _loadSavedCalls();
-    _loadFromDatabase(); // Load from Supabase
+  void startListeningForIncomingCalls() {
+    print('🎧 Started listening for incoming calls');
+    _incomingCallSubscription = _callRepository.watchIncomingCalls().listen((call) {
+      print('📞 Incoming call detected: ${call.id} from ${call.callerId}');
+      _currentCall = call;
+      notifyListeners();
+    });
   }
 
-  Future<void> _loadSavedCalls() async {
+  Future<void> initiateCall(String receiverId, CallType callType) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedCalls = prefs.getString('saved_calls');
-      if (savedCalls != null) {
-        final List<dynamic> callList = jsonDecode(savedCalls);
-        _calls = callList.map((c) => CallItem(
-          id: c['id'],
-          name: c['name'],
-          phoneNumber: c['phoneNumber'],
-          time: DateTime.parse(c['time']),
-          type: c['type'],
-          isVideo: c['isVideo'],
-          avatar: c['avatar'],
-          color: Color(int.parse(c['color'].toString().replaceAll('#', ''), radix: 16)),
-        )).toList();
-        notifyListeners();
+      print('📞 Initiating call to $receiverId');
+      await _webrtcService.initialize();
+      await _webrtcService.getUserMedia(
+        video: callType == CallType.video,
+        audio: true,
+      );
+
+      _currentCall = await _callRepository.initiateCall(receiverId, callType);
+      print('✅ Call created: ${_currentCall!.id}');
+      _isCallActive = true;
+      
+      _setupCallListeners();
+      _setupWebRTCListeners();
+      
+      final offer = await _webrtcService.createOffer();
+      await _callRepository.updateCallOffer(_currentCall!.id, offer.toMap());
+      print('📤 Offer sent');
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error initiating call: $e');
+      _isCallActive = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> acceptCall() async {
+    if (_currentCall == null) return;
+    
+    try {
+      await _webrtcService.initialize();
+      await _webrtcService.getUserMedia(
+        video: _currentCall!.callType == CallType.video,
+        audio: true,
+      );
+
+      _setupCallListeners();
+      _setupWebRTCListeners();
+
+      if (_currentCall!.offer != null) {
+        await _webrtcService.setRemoteDescription(
+          RTCSessionDescription(_currentCall!.offer!['sdp'], _currentCall!.offer!['type'])
+        );
       }
+
+      final answer = await _webrtcService.createAnswer();
+      await _callRepository.acceptCall(_currentCall!.id, answer.toMap());
+      
+      _isCallActive = true;
+      notifyListeners();
     } catch (e) {
-      // Error loading saved calls
+      debugPrint('Error accepting call: $e');
     }
   }
 
-  Future<void> _saveCalls() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final callList = _calls.map((c) => {
-        'id': c.id,
-        'name': c.name,
-        'phoneNumber': c.phoneNumber,
-        'time': c.time.toIso8601String(),
-        'type': c.type,
-        'isVideo': c.isVideo,
-        'avatar': c.avatar,
-        'color': '#${c.color.value.toRadixString(16).padLeft(8, '0')}',
-      }).toList();
-      await prefs.setString('saved_calls', jsonEncode(callList));
-    } catch (e) {
-      // Error saving calls
-    }
+  Future<void> rejectCall() async {
+    if (_currentCall == null) return;
+    
+    await _callRepository.rejectCall(_currentCall!.id);
+    _cleanup();
   }
 
-  void addCall(CallItem call) {
-    _calls.insert(0, call);
-    _saveCalls();
-    _saveToDatabase(call); // Save to Supabase
+  Future<void> endCall() async {
+    if (_currentCall == null) return;
+    
+    await _callRepository.endCall(_currentCall!.id);
+    _cleanup();
+  }
+
+  void toggleMute() {
+    _isMuted = !_isMuted;
+    _webrtcService.toggleMute();
     notifyListeners();
   }
 
-  void makeCall(String name, String phoneNumber, bool isVideo) {
-    final call = CallItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      phoneNumber: phoneNumber,
-      time: DateTime.now(),
-      type: 'outgoing',
-      isVideo: isVideo,
-      avatar: name.isNotEmpty ? name[0].toUpperCase() : '?',
-      color: _getContactColor(name),
-    );
-    addCall(call);
+  void toggleVideo() {
+    _isVideoEnabled = !_isVideoEnabled;
+    _webrtcService.toggleVideo();
+    notifyListeners();
   }
 
-  // Save call to Supabase database
-  Future<void> _saveToDatabase(CallItem call) async {
-    try {
-      await SupabaseService.instance.insert('calls', {
-        'id': call.id,
-        'name': call.name,
-        'phone_number': call.phoneNumber,
-        'time': call.time.toIso8601String(),
-        'type': call.type,
-        'is_video': call.isVideo,
-        'avatar': call.avatar,
-        'color': '#${call.color.value.toRadixString(16).padLeft(8, '0')}',
-        'user_id': SupabaseService.instance.currentUserId,
+  void switchCamera() {
+    _webrtcService.switchCamera();
+  }
+
+  void _setupCallListeners() {
+    _callSubscription = _callRepository.watchCall(_currentCall!.id).listen((call) {
+      _currentCall = call;
+      
+      if (call.status == CallStatus.accepted && call.answer != null) {
+        _webrtcService.setRemoteDescription(
+          RTCSessionDescription(call.answer!['sdp'], call.answer!['type'])
+        );
+      } else if (call.status == CallStatus.ended || call.status == CallStatus.rejected) {
+        _cleanup();
+      }
+      
+      notifyListeners();
+    });
+
+    _iceCandidateSubscription = _callRepository.watchIceCandidates(_currentCall!.id).listen((candidates) {
+      for (final candidate in candidates) {
+        _webrtcService.addIceCandidate(RTCIceCandidate(
+          candidate.candidate['candidate'],
+          candidate.candidate['sdpMid'],
+          candidate.candidate['sdpMLineIndex'],
+        ));
+      }
+    });
+  }
+
+  void _setupWebRTCListeners() {
+    _webrtcIceCandidateSubscription = _webrtcService.iceCandidate.listen((candidate) {
+      _callRepository.addIceCandidate(_currentCall!.id, {
+        'candidate': candidate.candidate,
+        'sdpMid': candidate.sdpMid,
+        'sdpMLineIndex': candidate.sdpMLineIndex,
       });
-    } catch (e) {
-      print('Error saving call to database: $e');
-    }
+    });
   }
 
-  // Load calls from Supabase database
-  Future<void> _loadFromDatabase() async {
-    try {
-      final response = await SupabaseService.instance.client
-          .from('calls')
-          .select()
-          .eq('user_id', SupabaseService.instance.currentUserId ?? '')
-          .order('time', ascending: false);
-      
-      _calls = response.map<CallItem>((data) => CallItem(
-        id: data['id'],
-        name: data['name'],
-        phoneNumber: data['phone_number'],
-        time: DateTime.parse(data['time']),
-        type: data['type'],
-        isVideo: data['is_video'],
-        avatar: data['avatar'],
-        color: Color(int.parse(data['color'].toString().replaceAll('#', ''), radix: 16)),
-      )).toList();
-      
-      notifyListeners();
-    } catch (e) {
-      print('Error loading calls from database: $e');
-    }
-  }
-
-  void clearCallLog() {
-    _calls.clear();
-    _saveCalls();
+  void _cleanup() {
+    _currentCall = null;
+    _isCallActive = false;
+    _isMuted = false;
+    _isVideoEnabled = true;
+    
+    _callSubscription?.cancel();
+    _iceCandidateSubscription?.cancel();
+    _webrtcIceCandidateSubscription?.cancel();
+    
+    _webrtcService.dispose();
     notifyListeners();
   }
 
-  void deleteCall(int index) {
-    if (index >= 0 && index < _calls.length) {
-      final call = _calls[index];
-      _calls.removeAt(index);
-      _saveCalls();
-      _deleteFromDatabase(call.id); // Delete from Supabase
-      notifyListeners();
-    }
-  }
-
-  // Delete call from Supabase database
-  Future<void> _deleteFromDatabase(String callId) async {
-    try {
-      await SupabaseService.instance.delete('calls', callId);
-    } catch (e) {
-      print('Error deleting call from database: $e');
-    }
-  }
-
-  Color _getContactColor(String name) {
-    const colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.indigo,
-      Colors.pink,
-    ];
-    return colors[name.hashCode.abs() % colors.length];
+  @override
+  void dispose() {
+    _incomingCallSubscription?.cancel();
+    _cleanup();
+    super.dispose();
   }
 }

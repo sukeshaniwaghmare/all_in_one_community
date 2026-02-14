@@ -28,6 +28,9 @@ import 'features/archived/domain/usecases/get_archived_chats_usecase.dart';
 import 'features/status/provider/status_provider.dart';
 
 import 'features/calls/provider/call_provider.dart';
+import 'features/calls/data/datasources/call_remote_data_source.dart';
+import 'features/calls/data/repositories/call_repository_impl.dart';
+import 'features/calls/services/webrtc_service.dart';
 import 'features/contacts/provider/contact_provider.dart';
 import 'core/supabase_service.dart';
 
@@ -80,7 +83,12 @@ class CommunityApp extends StatelessWidget {
             getArchivedChatsUseCase: GetArchivedChatsUseCase(repository),
           );
         }),
-        ChangeNotifierProvider(create: (context) => CallProvider()),
+        ChangeNotifierProvider(create: (context) {
+          final dataSource = CallRemoteDataSource();
+          final repository = CallRepositoryImpl(dataSource);
+          final webrtcService = WebRTCService();
+          return CallProvider(repository, webrtcService);
+        }),
         ChangeNotifierProvider(create: (context) => ProfileProvider()),
         ChangeNotifierProvider(create: (context) => ContactProvider()),
         ChangeNotifierProvider(create: (context) => StatusProvider()),

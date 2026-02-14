@@ -1,63 +1,115 @@
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class WebRTCService {
-  static final WebRTCService _instance = WebRTCService._internal();
-  factory WebRTCService() => _instance;
-  WebRTCService._internal();
+  RTCPeerConnection? _peerConnection;
+  MediaStream? _localStream;
+  MediaStream? _remoteStream;
+  
+  final StreamController<MediaStream> _remoteStreamController = StreamController<MediaStream>.broadcast();
+  final StreamController<RTCIceCandidate> _iceCandidateController = StreamController<RTCIceCandidate>.broadcast();
+  
+  Stream<MediaStream> get remoteStream => _remoteStreamController.stream;
+  Stream<RTCIceCandidate> get iceCandidate => _iceCandidateController.stream;
+  
+  MediaStream? get localStream => _localStream;
 
-  RtcEngine? _engine;
-  String? _currentChannelId;
-  bool _isInCall = false;
-
-  static const String appId = 'e8f6f0c6b8d04d0fa5e3c8b9d7f6e5c4';
+  final Map<String, dynamic> _iceServers = {
+    'iceServers': [
+      {'urls': 'stun:stun.l.google.com:19302'},
+      {'urls': 'stun:stun1.l.google.com:19302'},
+    ],
+    'sdpSemantics': 'unified-plan',
+  };
 
   Future<void> initialize() async {
-    if (_engine != null) return;
-    await [Permission.microphone, Permission.camera].request();
-    _engine = createAgoraRtcEngine();
-    await _engine!.initialize(const RtcEngineContext(appId: appId));
+    _peerConnection = await createPeerConnection(_iceServers);
+    
+    _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+      if (!_iceCandidateController.isClosed) {
+        _iceCandidateController.add(candidate);
+      }
+    };
+    
+    _peerConnection!.onTrack = (RTCTrackEvent event) {
+      if (event.streams.isNotEmpty && !_remoteStreamController.isClosed) {
+        _remoteStream = event.streams[0];
+        _remoteStreamController.add(event.streams[0]);
+      }
+    };
   }
 
-  Future<String> startCall({required String receiverId, required String receiverName, required bool isVideo}) async {
-    await initialize();
-    final channelId = 'call_${DateTime.now().millisecondsSinceEpoch}';
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    await Supabase.instance.client.from('call_notifications').insert({
-      'channel_id': channelId, 'caller_id': userId, 'receiver_id': receiverId,
-      'receiver_name': receiverName, 'is_video': isVideo, 'status': 'ringing',
-      'created_at': DateTime.now().toIso8601String(),
+  Future<MediaStream> getUserMedia({required bool video, required bool audio}) async {
+    final constraints = {
+      'audio': audio,
+      'video': video ? {'facingMode': 'user'} : false,
+    };
+    
+    _localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    
+    // Use addTrack instead of addStream for Unified Plan
+    _localStream!.getTracks().forEach((track) {
+      _peerConnection?.addTrack(track, _localStream!);
     });
-    return channelId;
+    
+    return _localStream!;
   }
 
-  Future<void> joinCall(String channelId, int uid, {bool isVideo = false}) async {
-    _currentChannelId = channelId;
-    _isInCall = true;
-    if (isVideo) await _engine!.enableVideo();
-    await _engine!.joinChannel(token: '', channelId: channelId, uid: uid, options: const ChannelMediaOptions());
+  Future<RTCSessionDescription> createOffer() async {
+    final offer = await _peerConnection!.createOffer();
+    await _peerConnection!.setLocalDescription(offer);
+    return offer;
   }
 
-  Future<void> endCall() async {
-    if (_engine != null && _isInCall) await _engine!.leaveChannel();
-    if (_currentChannelId != null) {
-      await Supabase.instance.client.from('call_notifications')
-          .update({'status': 'ended', 'ended_at': DateTime.now().toIso8601String()})
-          .eq('channel_id', _currentChannelId!);
+  Future<RTCSessionDescription> createAnswer() async {
+    final answer = await _peerConnection!.createAnswer();
+    await _peerConnection!.setLocalDescription(answer);
+    return answer;
+  }
+
+  Future<void> setRemoteDescription(RTCSessionDescription description) async {
+    await _peerConnection!.setRemoteDescription(description);
+  }
+
+  Future<void> addIceCandidate(RTCIceCandidate candidate) async {
+    await _peerConnection!.addCandidate(candidate);
+  }
+
+  void switchCamera() {
+    if (_localStream != null) {
+      Helper.switchCamera(_localStream!.getVideoTracks().first);
     }
-    _isInCall = false;
-    _currentChannelId = null;
   }
 
-  Future<void> toggleMute(bool mute) async => await _engine?.muteLocalAudioStream(mute);
-  Future<void> toggleVideo(bool enabled) async => await _engine?.muteLocalVideoStream(!enabled);
-  Future<void> switchCamera() async => await _engine?.switchCamera();
-
-  void registerEventHandler({Function(RtcConnection, int, int)? onUserJoined, Function(RtcConnection, int, UserOfflineReasonType)? onUserOffline}) {
-    _engine?.registerEventHandler(RtcEngineEventHandler(onUserJoined: onUserJoined, onUserOffline: onUserOffline));
+  void toggleMute() {
+    if (_localStream != null) {
+      final audioTrack = _localStream!.getAudioTracks().first;
+      audioTrack.enabled = !audioTrack.enabled;
+    }
   }
 
-  RtcEngine? get engine => _engine;
-  bool get isInCall => _isInCall;
+  void toggleVideo() {
+    if (_localStream != null) {
+      final videoTrack = _localStream!.getVideoTracks().first;
+      videoTrack.enabled = !videoTrack.enabled;
+    }
+  }
+
+  Future<void> dispose() async {
+    await _localStream?.dispose();
+    await _remoteStream?.dispose();
+    await _peerConnection?.close();
+    
+    _localStream = null;
+    _remoteStream = null;
+    _peerConnection = null;
+    
+    // Close controllers after disposing resources
+    if (!_remoteStreamController.isClosed) {
+      await _remoteStreamController.close();
+    }
+    if (!_iceCandidateController.isClosed) {
+      await _iceCandidateController.close();
+    }
+  }
 }

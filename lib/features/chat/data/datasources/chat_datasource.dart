@@ -19,22 +19,19 @@ class ChatDataSource {
         throw Exception('User not authenticated');
       }
 
-      print('Current user ID: $currentUserId');
       
-      // Get all users
+      // Get all users from auth.users via user_profiles
       final usersResponse = await _supabaseService.client
           .from('user_profiles')
-          .select('id, full_name, avatar_url, bio, phone, email, created_at');
+          .select('id, full_name, avatar_url, bio, phone, email, created_at')
+          .neq('id', currentUserId); // Exclude current user
 
-      print('Found ${usersResponse.length} users');
       
-      // Get last message for each user
       final chats = <Chat>[];
       
       for (var user in usersResponse) {
         final userId = user['id'];
         
-        // Get last message between current user and this user
         final lastMessageResponse = await _supabaseService.client
             .from('messages')
             .select('message, created_at')
@@ -44,7 +41,6 @@ class ChatDataSource {
         
         final chat = Chat.fromUserProfile(user);
         
-        // Update with last message info if exists
         if (lastMessageResponse.isNotEmpty) {
           final lastMsg = lastMessageResponse.first;
           chats.add(chat.copyWith(
@@ -102,7 +98,6 @@ class ChatDataSource {
           chats.add(groupChat);
         }
       } catch (e) {
-        print('Error loading groups: $e');
       }
       
       // Sort by last message time (most recent first)
@@ -124,7 +119,27 @@ class ChatDataSource {
         throw Exception('User not authenticated');
       }
 
-      print('Getting messages for chatId: $chatId');
+    
+      // Validate UUID format
+      if (!_isValidUUID(chatId)) {
+      
+        
+        // Try to find user by full_name
+        try {
+          final userResponse = await _supabaseService.client
+              .from('user_profiles')
+              .select('id')
+              .eq('full_name', chatId)
+              .maybeSingle();
+          
+          if (userResponse != null) {
+            final actualUserId = userResponse['id'];
+            return getMessages(actualUserId); // Recursive call with correct ID
+          }
+        } catch (e) {
+        }
+        return [];
+      }
       
       // Check if this is a group by checking group_members table
       final groupCheck = await _supabaseService.client
@@ -143,7 +158,6 @@ class ChatDataSource {
             .eq('group_id', chatId)
             .order('created_at', ascending: true);
         
-        print('Got ${response.length} messages');
         
         // Fetch sender names
         final senderIds = response.map((m) => m['sender_id']).toSet().toList();
@@ -176,17 +190,18 @@ class ChatDataSource {
           );
         }).toList();
       } else {
-        // Fetch regular messages
+    
+        
         final response = await _supabaseService.client
             .from('messages')
             .select('*')
-            .or(
-                'and(sender_id.eq.$currentUserId,receiver_id.eq.$chatId),and(sender_id.eq.$chatId,receiver_id.eq.$currentUserId)')
+            .or('and(sender_id.eq.$currentUserId,receiver_id.eq.$chatId),and(sender_id.eq.$chatId,receiver_id.eq.$currentUserId)')
             .order('created_at', ascending: true);
+        
+        if (response.isEmpty) {
+          
+        }
 
-        print('Got ${response.length} messages');
-
-        // Fetch sender names for all unique sender IDs
         final senderIds = response.map((m) => m['sender_id']).toSet().toList();
         final senderNames = <String, String>{};
         
@@ -209,76 +224,80 @@ class ChatDataSource {
         }).toList();
       }
     } catch (e) {
-      print('Error getting messages: $e');
       return [];
     }
   }
 
-  /// =========================
-  /// SEND MESSAGE (TEXT / IMAGE)
-  /// =========================
   Future<void> sendMessage(ChatMessage message) async {
     try {
       final supabase = _supabaseService.client;
+
+ 
+
+      // Validate sender exists
+      try {
+        await supabase.from('user_profiles').select('id').eq('id', message.senderId).single();
+      } catch (e) {
+        throw Exception('Sender not found');
+      }
+
+      // Validate receiver exists
+      try {
+        await supabase.from('user_profiles').select('id').eq('id', message.receiverId).single();
+      } catch (e) {
+        throw Exception('Receiver not found');
+      }
 
       String finalMessageText = message.text;
       String messageType = 'text';
       String? mediaUrl;
 
-      /// -------- IMAGE/VIDEO HANDLING --------
       if (message.text.startsWith('IMAGES:')) {
         messageType = 'image';
         final imagePaths = message.text.substring(7).split('|||');
         final uploadedUrls = <String>[];
-        
         for (int i = 0; i < imagePaths.length; i++) {
           final url = await uploadImageToStorage(imagePaths[i]);
           if (url != null) uploadedUrls.add(url);
         }
-        
         mediaUrl = uploadedUrls.join('|||');
         finalMessageText = '${imagePaths.length} Images';
       } else if (message.text.startsWith('IMAGE:')) {
         messageType = 'image';
         final imagePath = message.text.substring(6);
-        
-        // Upload image to Supabase Storage
         mediaUrl = await uploadImageToStorage(imagePath);
         finalMessageText = 'Image';
       } else if (message.text.startsWith('VIDEO:')) {
         messageType = 'video';
         final videoPath = message.text.substring(6);
-        
-        // Upload video to Supabase Storage
         mediaUrl = await uploadVideoToStorage(videoPath);
         finalMessageText = 'Video';
       }
 
-      /// -------- INSERT MESSAGE --------
-      print('About to insert: sender=${message.senderId}, receiver=${message.receiverId}, message=$finalMessageText, type=$messageType');
+      final insertData = {
+        'sender_id': message.senderId,
+        'receiver_id': message.receiverId,
+        'message': finalMessageText,
+        'message_type': messageType,
+        'is_read': false,
+        'status': 'sent',
+      };
       
-      await supabase.from('messages').insert([
-        {
-          'sender_id': message.senderId,
-          'receiver_id': message.receiverId,
-          'message': finalMessageText,
-          'message_type': messageType,
-          'is_read': false,      
-          'status': 'sent',
-          'media_url': mediaUrl,
-        }
-      ]);
+      if (mediaUrl != null) insertData['media_url'] = mediaUrl;
       
-      print('Message sent successfully');
       
-      // Send FCM notification directly
+      final result = await supabase.from('messages').insert(insertData).select();
+    
+      
       try {
         await _sendFcmNotification(message.senderId, message.receiverId, finalMessageText);
       } catch (e) {
       }
+    } on PostgrestException catch (e) {
+    ;
+      throw Exception('Database error: ${e.message}');
     } catch (e) {
-     
-      throw Exception('Failed to send message: $e');
+      throw Exception('Failed: $e');
     }
   }
 
@@ -303,7 +322,6 @@ class ChatDataSource {
 
       return publicUrl;
     } catch (e) {
-      print('Error uploading image: $e');
       return null;
     }
   }
@@ -311,10 +329,8 @@ class ChatDataSource {
   /// Upload video to Supabase Storage
   Future<String?> uploadVideoToStorage(String videoPath) async {
     try {
-      print('📹 Starting video upload: $videoPath');
       final file = File(videoPath);
       if (!file.existsSync()) {
-        print('❌ Video file does not exist: $videoPath');
         return null;
       }
 
@@ -330,10 +346,8 @@ class ChatDataSource {
           .from('chat-media')
           .getPublicUrl(fileName);
 
-      print('✅ Video uploaded successfully: $publicUrl');
       return publicUrl;
     } catch (e) {
-      print('❌ Error uploading video: $e');
       return null;
     }
   }
@@ -429,6 +443,11 @@ Future<void> markMessagesAsRead(String chatUserId) async {
       default:
         return MessageType.text;
     }
+  }
+
+  bool _isValidUUID(String uuid) {
+    final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    return uuidRegex.hasMatch(uuid);
   }
 
 }

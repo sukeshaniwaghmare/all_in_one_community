@@ -1,41 +1,61 @@
--- Create call_notifications table for managing call signaling
-CREATE TABLE IF NOT EXISTS call_notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  channel_id TEXT NOT NULL UNIQUE,
-  caller_id UUID NOT NULL REFERENCES auth.users(id),
-  receiver_id UUID NOT NULL REFERENCES auth.users(id),
-  receiver_name TEXT NOT NULL,
-  is_video BOOLEAN DEFAULT false,
-  status TEXT DEFAULT 'ringing', -- ringing, accepted, rejected, ended, missed
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  ended_at TIMESTAMP WITH TIME ZONE
+-- Calls table for WebRTC signaling
+CREATE TABLE calls (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    caller_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    call_type VARCHAR(10) CHECK (call_type IN ('audio', 'video')) NOT NULL,
+    status VARCHAR(20) CHECK (status IN ('ringing', 'accepted', 'rejected', 'ended', 'missed')) DEFAULT 'ringing',
+    offer JSONB,
+    answer JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    started_at TIMESTAMP WITH TIME ZONE,
+    ended_at TIMESTAMP WITH TIME ZONE,
+    duration INTEGER DEFAULT 0
 );
 
--- Update calls table to use TEXT for color instead of INTEGER
-ALTER TABLE calls ALTER COLUMN color TYPE TEXT;
+-- ICE candidates table
+CREATE TABLE ice_candidates (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    call_id UUID REFERENCES calls(id) ON DELETE CASCADE,
+    candidate JSONB NOT NULL,
+    sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Create index for faster queries
-CREATE INDEX IF NOT EXISTS idx_call_notifications_receiver ON call_notifications(receiver_id);
-CREATE INDEX IF NOT EXISTS idx_call_notifications_caller ON call_notifications(caller_id);
-CREATE INDEX IF NOT EXISTS idx_call_notifications_status ON call_notifications(status);
+-- Enable RLS
+ALTER TABLE calls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ice_candidates ENABLE ROW LEVEL SECURITY;
 
--- Enable Row Level Security
-ALTER TABLE call_notifications ENABLE ROW LEVEL SECURITY;
+-- RLS Policies for calls
+CREATE POLICY "Users can view their own calls" ON calls
+    FOR SELECT USING (auth.uid() = caller_id OR auth.uid() = receiver_id);
 
--- Policy: Users can insert their own calls
-CREATE POLICY "Users can create calls" ON call_notifications
-  FOR INSERT
-  WITH CHECK (auth.uid() = caller_id);
+CREATE POLICY "Users can insert calls they initiate" ON calls
+    FOR INSERT WITH CHECK (auth.uid() = caller_id);
 
--- Policy: Users can view calls they're involved in
-CREATE POLICY "Users can view their calls" ON call_notifications
-  FOR SELECT
-  USING (auth.uid() = caller_id OR auth.uid() = receiver_id);
+CREATE POLICY "Users can update their own calls" ON calls
+    FOR UPDATE USING (auth.uid() = caller_id OR auth.uid() = receiver_id);
 
--- Policy: Users can update calls they're involved in
-CREATE POLICY "Users can update their calls" ON call_notifications
-  FOR UPDATE
-  USING (auth.uid() = caller_id OR auth.uid() = receiver_id);
+-- RLS Policies for ice_candidates
+CREATE POLICY "Users can view candidates for their calls" ON ice_candidates
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM calls 
+            WHERE calls.id = ice_candidates.call_id 
+            AND (calls.caller_id = auth.uid() OR calls.receiver_id = auth.uid())
+        )
+    );
 
--- Enable Realtime for call notifications
-ALTER PUBLICATION supabase_realtime ADD TABLE call_notifications;
+CREATE POLICY "Users can insert candidates for their calls" ON ice_candidates
+    FOR INSERT WITH CHECK (
+        auth.uid() = sender_id AND
+        EXISTS (
+            SELECT 1 FROM calls 
+            WHERE calls.id = ice_candidates.call_id 
+            AND (calls.caller_id = auth.uid() OR calls.receiver_id = auth.uid())
+        )
+    );
+
+-- Enable realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE calls;
+ALTER PUBLICATION supabase_realtime ADD TABLE ice_candidates;

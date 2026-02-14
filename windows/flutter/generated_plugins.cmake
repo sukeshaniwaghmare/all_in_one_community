@@ -3,12 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  agora_rtc_engine
   app_links
   emoji_picker_flutter
   file_selector_windows
   firebase_core
-  iris_method_channel
+  flutter_webrtc
   permission_handler_windows
   url_launcher_windows
 )

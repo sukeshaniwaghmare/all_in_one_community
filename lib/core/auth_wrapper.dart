@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/home_page/home screen_selection_screen.dart';
-import '../features/calls/services/call_notification_service.dart';
+import '../features/calls/services/call_service.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -17,7 +17,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Supabase.instance.client.auth.currentUser != null) {
-        CallNotificationService().initialize(context);
+        CallService.initializeCallListener(context);
       }
     });
   }
@@ -36,7 +36,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         final session = snapshot.hasData ? snapshot.data!.session : null;
         
         if (session != null) {
-          CallNotificationService().initialize(context);
+          CallService.initializeCallListener(context);
           return const CommunitySelectionScreen();
         }
         

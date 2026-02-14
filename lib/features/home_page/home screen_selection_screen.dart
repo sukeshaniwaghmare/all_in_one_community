@@ -8,7 +8,7 @@ import '../community/presentation/community_info_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../chat/data/models/chat_model.dart';
 import '../chat/provider/chat_provider.dart' as chat;
-import '../calls/presentation/calls_screen.dart';
+import '../calls/presentation/call_history_screen.dart';
 import '../contacts/presentation/select_contacts_screen.dart';
 import '../chat/presentation/screens_options/settings_screen.dart';
 import '../archived/presentation/archived_chats_screen.dart';
@@ -22,9 +22,10 @@ import '../chat/presentation/screens_options/linked_devices_screen.dart';
 import '../chat/presentation/screens_options/starred_messages_screen.dart';
 import '../chat/presentation/screens_options/payments_screen.dart';
 import '../calls/presentation/appbar_option_screen/schedule_call_screen.dart';
-import '../calls/presentation/appbar_option_screen/clear_call_log_screen.dart';
 import '../status/presentation/status_view_screen.dart';
 import '../status/provider/status_provider.dart';
+import '../calls/services/call_service.dart';
+import '../calls/domain/entities/call.dart';
 import 'dart:io';
 
 class ChatItem {
@@ -110,6 +111,12 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             unread: c.unreadCount,
             avatarColor: Colors.blue,
           )).toList();
+
+    // Debug: Print all chats with their unread counts
+    print('=== ALL CHATS ===');
+    for (var chat in chats) {
+      print('Chat: ${chat.name}, Unread: ${chat.unread}');
+    }
 
     if (_searchController.text.isNotEmpty) {
       chats = chats.where((c) => c.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
@@ -216,15 +223,9 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
                   _buildFilterChip('All'),
-                  _buildFilterChip('Unread'),
+                  _buildFilterChip('Unread', count: chats.where((c) => c.unread > 0).length),
                   _buildFilterChip('Favorites'),
-                  _buildFilterChip('Groups'),
-                  _buildFilterChip('New Order'),
-                  _buildFilterChip('New Customer'),
-                  _buildFilterChip('Pending Payment'),
-                  _buildFilterChip('Paid'),
-                  _buildFilterChip('Important'),
-                  _buildFilterChip('Order Complete'),
+                  _buildFilterChip('Commnunities'),
                   _buildFilterChip('Follow Up'),
                   _buildFilterChip('Lead'),
                   _buildAddListButton(),
@@ -238,7 +239,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
               children: [
                 _buildChatsTab(_getFilteredChats(chats)),
                 _buildCommunitiesTab(),
-                const CallsScreen(),
+                const CallHistoryScreen(),
                 _buildStatusTab(),
               ],
             ),
@@ -352,7 +353,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     }
   }
 
-  Widget _buildFilterChip(String label) {
+  Widget _buildFilterChip(String label, {int? count}) {
     final isSelected = _selectedFilter == label;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -365,7 +366,7 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            label,
+            count != null && count > 0 ? '$label ($count)' : label,
             style: TextStyle(
               fontSize: 13,
               color: isSelected ? AppTheme.primaryColor : Colors.black87,
@@ -401,35 +402,26 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
   }
   List<ChatItem> _getFilteredChats(List<ChatItem> chats) {
     final listProvider = Provider.of<CommunityListProvider>(context, listen: false);
+    final chatProvider = Provider.of<chat.ChatProvider>(context, listen: false);
+    
+    print('=== FILTER: $_selectedFilter ===');
     
     switch (_selectedFilter) {
       case 'Unread':
-        return chats.where((c) => c.unread > 0).toList();
+        final unreadChats = chats.where((c) => c.unread > 0).toList();
+        print('Unread filter: Found ${unreadChats.length} chats with unread messages');
+        for (var chat in unreadChats) {
+          print('  - ${chat.name}: ${chat.unread} unread');
+        }
+        return unreadChats;
       case 'Favorites':
         final favoriteCommunities = listProvider.getCommunitiesByList('Favorite');
         return chats.where((c) => favoriteCommunities.contains(c.name)).toList();
-      case 'Groups':
-        return chats
-            .where((c) => c.members != null && c.members!.isNotEmpty)
-            .toList();
-      case 'New Order':
-        final newOrderCommunities = listProvider.getCommunitiesByList('New Order');
-        return chats.where((c) => newOrderCommunities.contains(c.name)).toList();
-      case 'New Customer':
-        final newCustomerCommunities = listProvider.getCommunitiesByList('New Customer');
-        return chats.where((c) => newCustomerCommunities.contains(c.name)).toList();
-      case 'Pending Payment':
-        final pendingPaymentCommunities = listProvider.getCommunitiesByList('Pending Payment');
-        return chats.where((c) => pendingPaymentCommunities.contains(c.name)).toList();
-      case 'Paid':
-        final paidCommunities = listProvider.getCommunitiesByList('Paid');
-        return chats.where((c) => paidCommunities.contains(c.name)).toList();
-      case 'Important':
-        final importantCommunities = listProvider.getCommunitiesByList('Important');
-        return chats.where((c) => importantCommunities.contains(c.name)).toList();
-      case 'Order Complete':
-        final orderCompleteCommunities = listProvider.getCommunitiesByList('Order Complete');
-        return chats.where((c) => orderCompleteCommunities.contains(c.name)).toList();
+      case 'Commnunities':
+        return chats.where((c) {
+          final actualChat = chatProvider.chats.firstWhere((chat) => chat.name == c.name, orElse: () => Chat(id: '', name: '', lastMessage: '', lastMessageTime: DateTime.now(), receiverUserId: ''));
+          return actualChat.isGroup;
+        }).toList();
       case 'Follow Up':
         final followUpCommunities = listProvider.getCommunitiesByList('Follow Up');
         return chats.where((c) => followUpCommunities.contains(c.name)).toList();
@@ -505,16 +497,16 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                       child: ListTile(
                         leading: GestureDetector(
                           onTap: () {
-                            if (chatProvider.chats[i].profileImage != null && chatProvider.chats[i].profileImage!.isNotEmpty) {
-                              _showProfileImage(context, chatProvider.chats[i].profileImage!, chatItem.name);
+                            if (actualChat.profileImage != null && actualChat.profileImage!.isNotEmpty) {
+                              _showProfileImage(context, actualChat.profileImage!, chatItem.name);
                             }
                           },
-                          child: chatProvider.chats[i].profileImage != null && chatProvider.chats[i].profileImage!.isNotEmpty
+                          child: actualChat.profileImage != null && actualChat.profileImage!.isNotEmpty
                               ? CircleAvatar(
                                   backgroundColor: chatItem.avatarColor,
                                   child: ClipOval(
                                     child: Image.network(
-                                      chatProvider.chats[i].profileImage!,
+                                      actualChat.profileImage!,
                                       width: 40,
                                       height: 40,
                                       fit: BoxFit.cover,
@@ -524,15 +516,23 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                                 )
                               : CircleAvatar(backgroundColor: chatItem.avatarColor, child: Text(chatItem.initials)),
                         ),
-                        title: Text(chatItem.name),
-                        subtitle: Text(chatItem.preview, maxLines: 1),
-                        trailing: chatItem.unread > 0
-                            ? CircleAvatar(
+                        title: Text(chatItem.name, style: TextStyle(fontWeight: chatItem.unread > 0 ? FontWeight.bold : FontWeight.normal)),
+                        subtitle: Text(chatItem.preview, maxLines: 1, style: TextStyle(fontWeight: chatItem.unread > 0 ? FontWeight.w500 : FontWeight.normal)),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(chatItem.time, style: TextStyle(fontSize: 12, color: chatItem.unread > 0 ? AppTheme.primaryColor : Colors.grey)),
+                            if (chatItem.unread > 0) ...[
+                              const SizedBox(height: 4),
+                              CircleAvatar(
                                 radius: 10,
                                 backgroundColor: AppTheme.primaryColor,
-                                child: Text('${chatItem.unread}', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                              )
-                            : null,
+                                child: Text('${chatItem.unread}', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -682,10 +682,16 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildActionButton(Icons.message, AppTheme.primaryColor),
-                    _buildActionButton(Icons.call, AppTheme.primaryColor),
-                    _buildActionButton(Icons.videocam, AppTheme.primaryColor),
-                    _buildActionButton(Icons.info_outline, AppTheme.primaryColor),
+                    _buildActionButton(Icons.message, AppTheme.primaryColor, () => Navigator.pop(context)),
+                    _buildActionButton(Icons.call, AppTheme.primaryColor, () {
+                      Navigator.pop(context);
+                      CallService.makeCall(context, 'receiver_user_id', CallType.audio);
+                    }),
+                    _buildActionButton(Icons.videocam, AppTheme.primaryColor, () {
+                      Navigator.pop(context);
+                      CallService.makeCall(context, 'receiver_user_id', CallType.video);
+                    }),
+                    _buildActionButton(Icons.info_outline, AppTheme.primaryColor, () => Navigator.pop(context)),
                   ],
                 ),
               ),
@@ -696,9 +702,9 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
     );
   }
 
-  Widget _buildActionButton(IconData icon, Color color) {
+  Widget _buildActionButton(IconData icon, Color color, [VoidCallback? onPressed]) {
     return GestureDetector(
-      onTap: () => Navigator.pop(context),
+      onTap: onPressed ?? () => Navigator.pop(context),
       child: Icon(icon, color: color, size: 28),
     );
   }
@@ -758,11 +764,14 @@ class _CommunitySelectionScreenState extends State<CommunitySelectionScreen>
       'Starred': const StarredMessagesScreen(),
       'payments': const PaymentsScreen(),
       'schedule_call': const ScheduleCallScreen(),
-      'clear_call_log': const ClearCallLogScreen(),
     };
     
     if (routes.containsKey(value)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => routes[value]!));
+    } else if (value == 'clear_call_log') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Clear call log feature coming soon')),
+      );
     }
   }
 final ImagePicker _picker = ImagePicker();

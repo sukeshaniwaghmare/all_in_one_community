@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import 'call_info_screen.dart';
-import 'contact_selection_screen.dart';
 import '../provider/call_provider.dart';
 import '../../contacts/presentation/select_contacts_screen.dart';
 
-class CallsScreen extends StatefulWidget {
-  const CallsScreen({super.key});
+class CallHistoryScreen extends StatefulWidget {
+  const CallHistoryScreen({super.key});
 
   @override
-  State<CallsScreen> createState() => _CallsScreenState();
+  State<CallHistoryScreen> createState() => _CallHistoryScreenState();
 }
 
-class _CallsScreenState extends State<CallsScreen> {
+class _CallHistoryScreenState extends State<CallHistoryScreen> {
   int? _expandedIndex;
   final Set<int> _selectedCalls = {};
   bool get _isSelectionMode => _selectedCalls.isNotEmpty;
 
+  // Mock call history data - replace with actual data source later
+  final List<Map<String, dynamic>> _calls = [];
+
   @override
   Widget build(BuildContext context) {
-    final callProvider = Provider.of<CallProvider>(context);
-    final calls = callProvider.calls;
-
     return Scaffold(
       appBar: _isSelectionMode ? _buildSelectionAppBar() : null,
       body: Column(
@@ -30,7 +28,7 @@ class _CallsScreenState extends State<CallsScreen> {
           if (!_isSelectionMode) _buildTopActions(),
           if (!_isSelectionMode) _buildCreateCallLink(),
           if (!_isSelectionMode) _buildRecentHeader(),
-          _buildCallsList(calls, callProvider),
+          _buildCallsList(),
         ],
       ),
     );
@@ -101,9 +99,9 @@ class _CallsScreenState extends State<CallsScreen> {
     );
   }
 
-  Widget _buildCallsList(List calls, CallProvider callProvider) {
+  Widget _buildCallsList() {
     return Expanded(
-      child: calls.isEmpty
+      child: _calls.isEmpty
           ? const Center(
               child: Text(
                 'No call history',
@@ -111,9 +109,9 @@ class _CallsScreenState extends State<CallsScreen> {
               ),
             )
           : ListView.builder(
-              itemCount: calls.length,
+              itemCount: _calls.length,
               itemBuilder: (context, index) {
-                final call = calls[index];
+                final call = _calls[index];
                 final isSelected = _selectedCalls.contains(index);
                 
                 return Column(
@@ -126,9 +124,9 @@ class _CallsScreenState extends State<CallsScreen> {
                               activeColor: AppTheme.primaryColor,
                             )
                           : CircleAvatar(
-                              backgroundColor: call.color,
+                              backgroundColor: call['color'] ?? Colors.blue,
                               child: Text(
-                                call.avatar,
+                                call['avatar'] ?? 'U',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -136,36 +134,35 @@ class _CallsScreenState extends State<CallsScreen> {
                               ),
                             ),
                       title: Text(
-                        call.name,
+                        call['name'] ?? 'Unknown',
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: call.type == 'missed' ? Colors.red : null,
+                          color: call['type'] == 'missed' ? Colors.red : null,
                         ),
                       ),
                       subtitle: Row(
                         children: [
                           Icon(
-                            _getCallIcon(call.type),
+                            _getCallIcon(call['type'] ?? 'outgoing'),
                             size: 16,
-                            color: call.type == 'missed'
+                            color: call['type'] == 'missed'
                                 ? Colors.red
                                 : Colors.grey,
                           ),
                           const SizedBox(width: 4),
-                          Text(_formatTime(call.time)),
+                          Text(_formatTime(call['time'] ?? DateTime.now())),
                         ],
                       ),
                       trailing: _isSelectionMode
                           ? null
                           : GestureDetector(
                               onTap: () {
-                                callProvider.makeCall(call.name, call.phoneNumber, call.isVideo);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('${call.isVideo ? 'Video' : 'Audio'} calling ${call.name}...')),
+                                  SnackBar(content: Text('Calling ${call['name']}...')),
                                 );
                               },
                               child: Icon(
-                                call.isVideo ? Icons.videocam : Icons.call,
+                                call['isVideo'] == true ? Icons.videocam : Icons.call,
                                 color: AppTheme.primaryColor,
                               ),
                             ),
@@ -190,19 +187,19 @@ class _CallsScreenState extends State<CallsScreen> {
                               Icons.call,
                               'Audio',
                               AppTheme.primaryColor,
-                              () => _makeCall(call.name, call.phoneNumber, false),
+                              () => _makeCall(call['name'] ?? 'Unknown', call['phoneNumber'] ?? '', false),
                             ),
                             _buildActionIcon(
                               Icons.videocam,
                               'Video',
                               AppTheme.primaryColor,
-                              () => _makeCall(call.name, call.phoneNumber, true),
+                              () => _makeCall(call['name'] ?? 'Unknown', call['phoneNumber'] ?? '', true),
                             ),
                             _buildActionIcon(
                               Icons.message,
                               'Message',
                               AppTheme.primaryColor,
-                              () => _sendMessage(call.name),
+                              () => _sendMessage(call['name'] ?? 'Unknown'),
                             ),
                           ],
                         ),
@@ -232,17 +229,19 @@ class _CallsScreenState extends State<CallsScreen> {
   }
 
   void _deleteSelectedCalls() {
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    final sortedIndices = _selectedCalls.toList()..sort((a, b) => b.compareTo(a));
-    
-    for (int index in sortedIndices) {
-      callProvider.deleteCall(index);
-    }
+    setState(() {
+      final sortedIndices = _selectedCalls.toList()..sort((a, b) => b.compareTo(a));
+      for (int index in sortedIndices) {
+        if (index < _calls.length) {
+          _calls.removeAt(index);
+        }
+      }
+      _selectedCalls.clear();
+    });
     
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_selectedCalls.length} calls deleted')),
+      const SnackBar(content: Text('Calls deleted')),
     );
-    setState(() => _selectedCalls.clear());
   }
 
   // 🔹 Top action buttons widget
@@ -283,8 +282,6 @@ class _CallsScreenState extends State<CallsScreen> {
   }
 
   void _makeDirectCall() {
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    callProvider.makeCall('Contact', '+1234567890', false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Making call...')),
     );
@@ -387,8 +384,6 @@ class _CallsScreenState extends State<CallsScreen> {
 
   void _makeCall(String name, String phoneNumber, bool isVideo) {
     setState(() => _expandedIndex = null);
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    callProvider.makeCall(name, phoneNumber, isVideo);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${isVideo ? 'Video' : 'Audio'} calling $name...')),
     );
@@ -596,8 +591,6 @@ class _KeypadWidgetState extends State<KeypadWidget> {
   }
 
   void _makeCall() {
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    callProvider.makeCall('Unknown', _phoneNumber, false);
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Calling $_phoneNumber...')),

@@ -1,5 +1,5 @@
-import 'package:all_in_one_community/features/calls/presentation/audio_call_screen.dart';
-import 'package:all_in_one_community/features/calls/presentation/video_call_screen.dart';
+import '../../../../calls/services/call_service.dart';
+import '../../../../calls/domain/entities/call.dart';
 import 'package:all_in_one_community/features/chat/presentation/widgets/chats_creen3/edit_infoscreen_screen.dart';
 import 'package:flutter/material.dart';
 import 'option_screen/create_group_screen.dart';
@@ -14,7 +14,7 @@ import '../chat_screen2/option_screen/media_screen.dart';
 import '../../../../notifications/presentation/notification_screen.dart';
 import 'option_screen/disappearing_messages_screen_infoscreen.dart';
 import 'option_screen/advanced_chat_privacy_screen_infoscreen .dart';
-import '../../../../calls/presentation/call_info_screen.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InfoScreen extends StatefulWidget {
@@ -136,31 +136,17 @@ class _InfoScreenState extends State<InfoScreen> {
           IconButton(
             icon: Icon(Icons.call, color: AppTheme.primaryColor),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AudioCallScreen(
-                    contactName: widget.name,
-                    receiverId: widget.receiverId,
-                    isIncoming: false,
-                  ),
-                ),
-              );
+              if (widget.receiverId != null) {
+                CallService.makeCall(context, widget.receiverId!, CallType.audio);
+              }
             },
           ),
           IconButton(
             icon: Icon(Icons.videocam, color: AppTheme.primaryColor),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VideoCallScreen(
-                    contactName: widget.name,
-                    receiverId: widget.receiverId,
-                    isIncoming: false,
-                  ),
-                ),
-              );
+              if (widget.receiverId != null) {
+                CallService.makeCall(context, widget.receiverId!, CallType.video);
+              }
             },
           ),
           PopupMenuButton<String>(
@@ -301,28 +287,14 @@ class _InfoScreenState extends State<InfoScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _ActionItem(Icons.call, 'Audio', onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AudioCallScreen(
-                  contactName: widget.name,
-                  receiverId: widget.receiverId,
-                  isIncoming: false,
-                ),
-              ),
-            );
+            if (widget.receiverId != null) {
+              CallService.makeCall(context, widget.receiverId!, CallType.audio);
+            }
           }),
           _ActionItem(Icons.videocam, 'Video', onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => VideoCallScreen(
-                  contactName: widget.name,
-                  receiverId: widget.receiverId,
-                  isIncoming: false,
-                ),
-              ),
-            );
+            if (widget.receiverId != null) {
+              CallService.makeCall(context, widget.receiverId!, CallType.video);
+            }
           }),
           if (widget.isGroup) _ActionItem(Icons.person_add, 'Add', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add participant')))),
           _ActionItem(Icons.search, 'Search', onTap: _searchInChat),

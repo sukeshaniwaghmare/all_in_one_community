@@ -26,6 +26,8 @@ class RealtimeService {
     final currentUserId = _authService.currentUserId;
     if (currentUserId == null) return;
     
+    print('📡 Subscribing to messages for chat: $chatId');
+    
     _messagesChannel?.unsubscribe();
     
     _messagesChannel = _supabase
@@ -39,11 +41,19 @@ class RealtimeService {
             final senderId = data['sender_id'];
             final receiverId = data['receiver_id'];
             
+            print('📨 New message received:');
+            print('   Sender: $senderId');
+            print('   Receiver: $receiverId');
+            print('   Current User: $currentUserId');
+            print('   Chat ID: $chatId');
+            
             // Only process messages between current user and chat partner
             if ((senderId == currentUserId && receiverId == chatId) ||
                 (senderId == chatId && receiverId == currentUserId)) {
-             
+              print('   ✅ Message is for this chat - adding to stream');
               _messageStreamController.add(data);
+            } else {
+              print('   ❌ Message not for this chat - ignoring');
             }
           },
         )
@@ -52,6 +62,8 @@ class RealtimeService {
 
   void subscribeToChats(String userId) {
     if (!_authService.isAuthenticated) return;
+    
+    print('📡 Subscribing to chat updates for user: $userId');
     
     _chatsChannel?.unsubscribe();
     
@@ -62,7 +74,19 @@ class RealtimeService {
           schema: 'public', 
           table: 'messages',
           callback: (payload) {
-            _chatStreamController.add(payload.newRecord);
+            final data = payload.newRecord;
+            print('💬 Chat update received:');
+            print('   Sender: ${data['sender_id']}');
+            print('   Receiver: ${data['receiver_id']}');
+            print('   Message: ${data['message']}');
+            
+            // Only process if current user is sender or receiver
+            if (data['sender_id'] == userId || data['receiver_id'] == userId) {
+              print('   ✅ Adding to chat stream');
+              _chatStreamController.add(data);
+            } else {
+              print('   ❌ Not for this user - ignoring');
+            }
           },
         )
         .subscribe();
